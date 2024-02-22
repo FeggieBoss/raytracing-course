@@ -9,7 +9,7 @@ Quaternion Quaternion::operator + (const Quaternion &q) const {
 }
 
 Quaternion Quaternion::operator*(const Quaternion &q) const {
-    return {w*q.v + q.w*v + v*q.v, w*q.w - (v^q.v)};
+    return {w*q.v + q.w*v + (v*q.v), w*q.w - (v^q.v)};
 }
 
 Quaternion Quaternion::conjugate() const {

@@ -31,22 +31,22 @@ Ray Camera::get_to_ray(int x, int y) const {
     double tan_fov_x = tan(fov_x / 2);
     double tan_fov_y = tan_fov_x * height / width;
 
-    float nx =       (2 * (x + 0.5) / width  - 1) * tan_fov_x;
-    float ny = 1.f * (2 * (y + 0.5) / height - 1) * tan_fov_y; // not -1.f becase of reversed order in render
+    float nx =        (2 * (x + 0.5) / width  - 1) * tan_fov_x;
+    float ny = -1.f * (2 * (y + 0.5) / height - 1) * tan_fov_y; // -1.f becase of reversed order in render
 
-    return {pos, nx*right - ny*up + 1.f*forward};
+    return {pos, nx*right + ny*up + 1.f*forward};
 }
 
 Color Scene::raytrace(int x, int y) const {
     Color ans = background;
 
-    double best_dist = -1;
+    double closest_dist = -1;
     for (auto &primitive : primitives) {
         auto intersection = primitive->colorIntersect(cam.get_to_ray(x, y));
         if (intersection.has_value()) {
             auto [t, d] = intersection.value();
-            if (best_dist == -1 || t < best_dist) {
-                best_dist = t;
+            if (closest_dist == -1 || t < closest_dist) {
+                closest_dist = t;
                 ans = d;
             }
         }
@@ -61,10 +61,10 @@ std::pair<std::unique_ptr<Primitive>, std::string> loadPrimitive(std::istream &i
     while (getline(in, cmds)) {
         std::stringstream ss;
         ss << cmds;
-        std::string cmdName;
-        ss >> cmdName;
+        std::string cmd_name;
+        ss >> cmd_name;
 
-        auto cmd = get_command(cmdName);
+        auto cmd = get_command(cmd_name);
         if(cmd==COMMAND_EMPTY) break;
 
         switch (cmd) {
@@ -99,8 +99,8 @@ std::pair<std::unique_ptr<Primitive>, std::string> loadPrimitive(std::istream &i
                 break;
             }            
             default: {
-                std::cerr << "unexpected primitive(" << cmdName << ")" << std::endl;
-                return std::make_pair(std::move(primitive), cmdName);
+                std::cerr << "unexpected primitive(" << cmd_name << ")" << std::endl;
+                return std::make_pair(std::move(primitive), cmd_name);
             }
         }
     }
@@ -113,11 +113,11 @@ void Scene::load(std::istream &in) {
     while (getline(in, cmds)) {
         std::stringstream ss;
         ss << cmds;
-        std::string cmdName;
-        ss >> cmdName;
+        std::string cmd_name;
+        ss >> cmd_name;
 
     pasrse_command_again:
-        auto cmd = get_command(cmdName);
+        auto cmd = get_command(cmd_name);
         if(cmd==COMMAND_EMPTY) continue;
 
         switch (cmd) {
@@ -152,14 +152,14 @@ void Scene::load(std::istream &in) {
             case COMMAND_NEW_PRIMITIVE: {
                 auto [primitive, restCmd] = loadPrimitive(in);
                 primitives.push_back(std::move(primitive));
-                cmdName = restCmd;
-                if(!cmdName.empty()) {
+                cmd_name = restCmd;
+                if(!cmd_name.empty()) {
                     goto pasrse_command_again;
                 }
                 break;
             }
             default: {
-                std::cerr << "unexpected command(" << cmdName << ")" << std::endl;
+                std::cerr << "unexpected command(" << cmd_name << ")" << std::endl;
                 break;
             }
         }

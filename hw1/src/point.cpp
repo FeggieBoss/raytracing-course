@@ -17,11 +17,11 @@ Point Point::operator/(const Point &p) const {
     return {x/p.x, y/p.y, z/p.z};
 }
 
-Point Point::operator*(const Point &p) const {
-    return {x*p.x, y*p.y, z*p.z};
+Point Point::operator*(const Point &p) const { // векторное
+    return {(z*p.y)-(y*p.z), (x*p.z)-(z*p.x), (y*p.x)-(x*p.y)};
 }
 
-double Point::operator^(const Point &p) const {
+double Point::operator^(const Point &p) const { // скалярное
     return x*p.x + y*p.y + z*p.z;
 }
 
