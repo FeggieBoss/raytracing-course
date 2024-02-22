@@ -54,7 +54,7 @@ Color Scene::raytrace(int x, int y) const {
     return ans;
 }
 
-std::unique_ptr<Primitive> loadPrimitive(std::istream &in) {
+std::pair<std::unique_ptr<Primitive>, std::string> loadPrimitive(std::istream &in) {
     std::unique_ptr<Primitive> primitive;
 
     std::string cmds;
@@ -100,12 +100,12 @@ std::unique_ptr<Primitive> loadPrimitive(std::istream &in) {
             }            
             default: {
                 std::cerr << "unexpected primitive(" << cmdName << ")" << std::endl;
-                return nullptr;
+                return std::make_pair(std::move(primitive), cmdName);
             }
         }
     }
  
-    return primitive;
+    return std::make_pair(std::move(primitive), "");
 }
 
 void Scene::load(std::istream &in) {
@@ -116,6 +116,7 @@ void Scene::load(std::istream &in) {
         std::string cmdName;
         ss >> cmdName;
 
+    pasrse_command_again:
         auto cmd = get_command(cmdName);
         if(cmd==COMMAND_EMPTY) continue;
 
@@ -149,8 +150,12 @@ void Scene::load(std::istream &in) {
                 break;
             }
             case COMMAND_NEW_PRIMITIVE: {
-                auto primitive = loadPrimitive(in);
+                auto [primitive, restCmd] = loadPrimitive(in);
                 primitives.push_back(std::move(primitive));
+                cmdName = restCmd;
+                if(!cmdName.empty()) {
+                    goto pasrse_command_again;
+                }
                 break;
             }
             default: {
