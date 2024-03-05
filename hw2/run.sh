@@ -1,2 +1,2 @@
 #!/bin/sh
-./build/raytracing_hw1 "$1" "$2"
+./build/raytracing_hw2 "$1" "$2"
