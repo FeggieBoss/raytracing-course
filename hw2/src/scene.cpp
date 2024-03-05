@@ -83,6 +83,7 @@ std::pair<std::unique_ptr<Primitive>, std::string> LoadPrimitive(std::istream &i
             }
             case COMMAND_ROTATION: {
                 ss >> primitive->rotator;
+                primitive->rotator.w *= -1; // ?! ?! ?! ? ! ?! ?!? !?!? !?? !?!?! ?!?!?!!?
                 break;
             }            
             case COMMAND_METALLIC: {

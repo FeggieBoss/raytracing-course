@@ -2,7 +2,7 @@
 #include <cmath>
 
 std::optional<std::pair<intersection_t, Color>> Primitive::colorIntersect(const Ray &r) {
-    Ray transformed = transform(glm::conjugate(rotator), (r + -1*pos));
+    Ray transformed = transform(rotator, (r + -1*pos));
     auto isec = intersect(transformed);
     if (isec.has_value()) {
         auto [t, normal, interior] = isec.value();
