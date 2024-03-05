@@ -35,7 +35,7 @@ unsigned int get_command(const std::string& command) {
     return -1;
 }
 
-Camera::Camera(double fov_x) : fov_x(fov_x) {}
+Camera::Camera(float fov_x) : fov_x(fov_x) {}
 
 ///////////////////
 // SCENE LOADING //
@@ -247,8 +247,8 @@ void Scene::Load(std::istream &in) {
 /////////////////////
 
 Ray Camera::GetToRay(int x, int y) const {
-    double tan_fov_x = tan(fov_x / 2);
-    double tan_fov_y = tan_fov_x * height / width;
+    float tan_fov_x = tan(fov_x / 2);
+    float tan_fov_y = tan_fov_x * height / width;
 
     float nx =        (2 * (x + 0.5) / width  - 1) * tan_fov_x;
     float ny = -1.f * (2 * (y + 0.5) / height - 1) * tan_fov_y; // -1.f becase of reversed order in render
@@ -256,11 +256,11 @@ Ray Camera::GetToRay(int x, int y) const {
     return {pos, nx*right + ny*up + 1.f*forward};
 }
 
-ray_intersection_t Scene::RayIntersection(const Ray &ray, double tmax) const {
+ray_intersection_t Scene::RayIntersection(const Ray &ray, float tmax) const {
     ray_intersection_t ret;
     ret.id = -1;
 
-    double closest_dist = -1;
+    float closest_dist = -1;
     int cur_id = 0;
     for (auto &primitive : primitives) {
         auto intersection = primitive->colorIntersect(ray);
@@ -295,7 +295,7 @@ Color Scene::RayTrace(const Ray& ray, size_t ost_raydepth) const {
     auto [t, normal, interior] = raytrace.isec;
     size_t id = raytrace.id;
     Point p = ray.o + t * ray.d;
-    glm::dvec3 reflect_dir = GetReflection(normal, glm::normalize(ray.d));
+    glm::vec3 reflect_dir = GetReflection(normal, glm::normalize(ray.d));
 
     assert(glm::length(normal) <= 1 + eps);
     
@@ -305,7 +305,7 @@ Color Scene::RayTrace(const Ray& ray, size_t ost_raydepth) const {
         Color summary_color = ambient_light;
         for (const auto &light : lights) {
             auto [color, dir, dist] = light->CalcLight(p);
-            double koef = glm::dot(dir, normal);
+            float koef = glm::dot(dir, normal);
             if(koef >= 0) { // otherwise light is behind
                 bool is_point_between = (RayIntersection({p + eps * dir, dir}, dist).id != -1);
                 if(!is_point_between) {
@@ -326,28 +326,28 @@ Color Scene::RayTrace(const Ray& ray, size_t ost_raydepth) const {
         Color reflected_color = RayTrace({p + eps * reflect_dir, reflect_dir}, ost_raydepth-1);
         Color summary_color = reflected_color;
 
-        double eta1 = 1., eta2 = primitives[id]->ior;
+        float eta1 = 1., eta2 = primitives[id]->ior;
         if (interior) {
             std::swap(eta1, eta2);
         }
 
-        glm::dvec3 dir = -1. * glm::normalize(ray.d);
-        double dot_normal_dir = glm::dot(normal, dir);
-        double sin_theta2 = eta1 / eta2 * sqrt(1 - dot_normal_dir * dot_normal_dir);
+        glm::vec3 dir = -1. * glm::normalize(ray.d);
+        float dot_normal_dir = glm::dot(normal, dir);
+        float sin_theta2 = eta1 / eta2 * sqrt(1 - dot_normal_dir * dot_normal_dir);
         if (fabs(sin_theta2) > 1.) {
             return summary_color;
         }
 
-        double cosTheta2 = sqrt(1 - sin_theta2 * sin_theta2);
-        glm::dvec3 refractedDir = eta1 / eta2 * (-1. * dir) + (eta1 / eta2 * dot_normal_dir - cosTheta2) * normal;
+        float cosTheta2 = sqrt(1 - sin_theta2 * sin_theta2);
+        glm::vec3 refractedDir = eta1 / eta2 * (-1. * dir) + (eta1 / eta2 * dot_normal_dir - cosTheta2) * normal;
         Ray refracted = Ray(ray.o + t * ray.d + 0.0001 * refractedDir, refractedDir);
         Color refracted_component = RayTrace(refracted, ost_raydepth - 1);
         if (!interior) {
             refracted_component = refracted_component.rgb * primitives[id]->col.rgb;
         }
 
-        double r0 = pow((eta1 - eta2) / (eta1 + eta2), 2.);
-        double r = r0 + (1 - r0) * pow(1 - dot_normal_dir, 5.);
+        float r0 = pow((eta1 - eta2) / (eta1 + eta2), 2.);
+        float r = r0 + (1 - r0) * pow(1 - dot_normal_dir, 5.);
         return r * reflected_color.rgb + (1 - r) * refracted_component.rgb;
         break;
     }

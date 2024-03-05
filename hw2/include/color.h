@@ -7,13 +7,13 @@
 
 class Color {
 public:
-    glm::dvec3 rgb;
+    glm::vec3 rgb;
     Color() = default;
-    Color(double r, double g, double b);   
-    Color(glm::dvec3 rgb);    
-    double r() const;
-    double g() const;
-    double b() const;
+    Color(float r, float g, float b);   
+    Color(glm::vec3 rgb);    
+    float r() const;
+    float g() const;
+    float b() const;
 
     unsigned char* toUInts() const;
     friend std::istream& operator>>(std::istream &in, Color &color);

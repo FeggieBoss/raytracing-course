@@ -6,7 +6,7 @@ DotLight::DotLight(const Color& intens, const Point& pos, const Color& att): Lig
 
 point_light_data_t DotLight::CalcLight(const Point& p) const {
     Point dir = pos - p;
-    double dist = glm::length(dir);
+    float dist = glm::length(dir);
     Color color = 1. / (att.r() + att.g() * dist + att.b() * dist * dist) * intens.rgb;
 
     return {color, glm::normalize(dir), dist};

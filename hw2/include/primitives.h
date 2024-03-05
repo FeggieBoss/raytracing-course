@@ -10,8 +10,8 @@
 #include <optional>
 
 struct intersection_t {
-    double t;
-    glm::dvec3 normal;
+    float t;
+    glm::vec3 normal;
     bool interior;
 };
 
@@ -24,7 +24,7 @@ public:
     Point pos;
     Quaternion rotator = {1.,0.,0.,0.};
     Material material = Material::DIFFUSE;
-    double ior = 0.;
+    float ior = 0.;
 
     Primitive() = default;
     std::optional<std::pair<intersection_t, Color>> colorIntersect(const Ray &r);

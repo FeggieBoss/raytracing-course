@@ -41,11 +41,11 @@
 struct Camera {
     Point pos;
     Point up, right, forward;
-    double fov_x;
+    float fov_x;
     int width, height;
 
     Camera() = default;
-    Camera(double fov_x0);
+    Camera(float fov_x0);
 
     Ray GetToRay(int x, int y) const;
 };
@@ -57,8 +57,8 @@ struct ray_intersection_t {
 
 class Scene {
 private:
-    double eps = 1e-3;
-    ray_intersection_t RayIntersection(const Ray& ray, double tmax) const;
+    float eps = 1e-3;
+    ray_intersection_t RayIntersection(const Ray& ray, float tmax) const;
     Color RayTrace(const Ray& ray, size_t ost_raydepth) const;
 public:
     unsigned int ray_depth;

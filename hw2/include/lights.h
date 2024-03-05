@@ -9,8 +9,8 @@
 
 struct point_light_data_t {
     Color color;
-    glm::dvec3 dir;
-    double dist;
+    glm::vec3 dir;
+    float dist;
 };
 
 class Light {
