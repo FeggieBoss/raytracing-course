@@ -228,7 +228,6 @@ Color Scene::RayTrace(const Ray& ray, size_t ost_raydepth) {
     auto [t, normal, interior] = raytrace.isec;
     size_t id = raytrace.id;
     Point p = ray.o + t * ray.d;
-    glm::vec3 reflect_dir = GetReflection(normal, glm::normalize(ray.d));
 
     assert(glm::length(normal) <= 1 + eps);
     
@@ -247,13 +246,12 @@ Color Scene::RayTrace(const Ray& ray, size_t ost_raydepth) {
         break;
     }
     case Material::METALLIC: {   
+        glm::vec3 reflect_dir = GetReflection(normal, glm::normalize(ray.d));
         Color reflected_color = RayTrace({p + eps * reflect_dir, reflect_dir}, ost_raydepth-1);     
         other_color = {primitives[id]->col.rgb * reflected_color.rgb};
         break;
     }
     case Material::DIELECTRIC: {
-        Color reflected_color = RayTrace({p + eps * reflect_dir, reflect_dir}, ost_raydepth-1);
-
         float eta1 = 1., eta2 = primitives[id]->ior;
         if (interior) {
             std::swap(eta1, eta2);
@@ -267,12 +265,16 @@ Color Scene::RayTrace(const Ray& ray, size_t ost_raydepth) {
         float r = r0 + (1 - r0) * pow(1 - dot_normal_dir, 5.);
 
         if (fabs(sin_theta2) > 1.) { // полное внутреннее отражение = вернуть отражённый
+            glm::vec3 reflect_dir = GetReflection(normal, glm::normalize(ray.d));
+            Color reflected_color = RayTrace({p + eps * reflect_dir, reflect_dir}, ost_raydepth-1);
             other_color = reflected_color;
             break;
         }
 
         // с шансом r вернем отражённый / 1-r соответственно преломлённый
         if (get_next_uniform() < r) {
+            glm::vec3 reflect_dir = GetReflection(normal, glm::normalize(ray.d));
+            Color reflected_color = RayTrace({p + eps * reflect_dir, reflect_dir}, ost_raydepth-1);
             other_color = reflected_color;
             break;
         }
