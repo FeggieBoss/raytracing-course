@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 project(raytracing_hw3)
 
 set(BINARY "${PROJECT_NAME}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall -Wextra -O2 -fopenmp")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall -Wextra -O3")
 
 include_directories(include)
 add_executable(${BINARY}

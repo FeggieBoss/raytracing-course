@@ -261,15 +261,15 @@ Color Scene::RayTrace(const Ray& ray, size_t ost_raydepth) {
         float dot_normal_dir = glm::dot(normal, dir);
         float sin_theta2 = eta1 / eta2 * sqrt(1 - dot_normal_dir * dot_normal_dir);
 
-        float r0 = pow((eta1 - eta2) / (eta1 + eta2), 2.);
-        float r = r0 + (1 - r0) * pow(1 - dot_normal_dir, 5.);
-
         if (fabs(sin_theta2) > 1.) { // полное внутреннее отражение = вернуть отражённый
             glm::vec3 reflect_dir = GetReflection(normal, glm::normalize(ray.d));
             Color reflected_color = RayTrace({p + eps * reflect_dir, reflect_dir}, ost_raydepth-1);
             other_color = reflected_color;
             break;
         }
+
+        float r0 = pow((eta1 - eta2) / (eta1 + eta2), 2.);
+        float r = r0 + (1 - r0) * pow(1 - dot_normal_dir, 5.);
 
         // с шансом r вернем отражённый / 1-r соответственно преломлённый
         if (get_next_uniform() < r) {
