@@ -235,15 +235,15 @@ Color Scene::RayTrace(const Ray& ray, size_t ost_raydepth) {
     switch (primitives[id]->material)
     {
     case Material::DIFFUSE: {
-        // L = E + 2*pi*C*L_in(w)*dot(w,n)
+        // L = E + 2*C*L_in(w)*dot(w,n)
         
         // генерируем на единичной сфере при помощи normal + проекция
-        glm::vec3 rand_dir = glm::normalize(glm::vec3{get_next_uniform(), get_next_uniform(), get_next_uniform()});
+        glm::vec3 rand_dir = glm::normalize(glm::vec3{get_next_normal(), get_next_normal(), get_next_normal()});
         // если не в той полусфере, то берём обратный
         if (glm::dot(rand_dir,normal) < 0) {
             rand_dir = -1. * rand_dir;
         }
-        Color rand_col = {2 * acos(-1.f) * glm::dot(rand_dir, normal) * RayTrace(Ray({p + eps * rand_dir, rand_dir}), ost_raydepth-1).rgb};
+        Color rand_col = {2 * glm::dot(rand_dir, normal) * RayTrace(Ray({p + eps * rand_dir, rand_dir}), ost_raydepth-1).rgb};
         other_color = {primitives[id]->col.rgb * rand_col.rgb};
         break;
     }
