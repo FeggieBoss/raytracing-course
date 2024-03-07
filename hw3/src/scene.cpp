@@ -100,7 +100,7 @@ std::pair<std::unique_ptr<Primitive>, std::string> LoadPrimitive(std::istream &i
             }            
             
             default: {
-                std::cerr << "unexpected light(" << cmd_name << ")" << std::endl;
+                std::cerr << "unexpected primitive(" << cmd_name << ")" << std::endl;
                 return std::make_pair(std::move(primitive), cmd_name);
             }
         }
@@ -235,23 +235,30 @@ Color Scene::RayTrace(const Ray& ray, size_t ost_raydepth) {
     switch (primitives[id]->material)
     {
     case Material::DIFFUSE: {
+        // L = E + 2*pi*C*L_in(w)*dot(w,n)
+        
         // генерируем на единичной сфере при помощи normal + проекция
         glm::vec3 rand_dir = glm::normalize(glm::vec3{get_next_uniform(), get_next_uniform(), get_next_uniform()});
         // если не в той полусфере, то берём обратный
         if (glm::dot(rand_dir,normal) < 0) {
             rand_dir = -1. * rand_dir;
         }
-        Color rand_col = {2 * glm::dot(rand_dir, normal) * RayTrace(Ray({p + eps * rand_dir, rand_dir}), ost_raydepth-1).rgb};
+        Color rand_col = {2 * acos(-1.f) * glm::dot(rand_dir, normal) * RayTrace(Ray({p + eps * rand_dir, rand_dir}), ost_raydepth-1).rgb};
         other_color = {primitives[id]->col.rgb * rand_col.rgb};
         break;
     }
     case Material::METALLIC: {   
+        // L = E + C*L_in(R_n(w))
+
         glm::vec3 reflect_dir = GetReflection(normal, glm::normalize(ray.d));
         Color reflected_color = RayTrace({p + eps * reflect_dir, reflect_dir}, ost_raydepth-1);     
         other_color = {primitives[id]->col.rgb * reflected_color.rgb};
         break;
     }
     case Material::DIELECTRIC: {
+        // sin(theta2) > 1 or coin flip < r => reflected
+        // otherwise => refracted
+
         float eta1 = 1., eta2 = primitives[id]->ior;
         if (interior) {
             std::swap(eta1, eta2);
