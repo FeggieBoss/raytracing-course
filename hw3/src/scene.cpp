@@ -22,15 +22,11 @@ unsigned int get_command(const std::string& command) {
     if (command == "ROTATION")              return COMMAND_ROTATION;
     if (command == "COLOR")                 return COMMAND_COLOR;
     if (command == "RAY_DEPTH")             return COMMAND_RAY_DEPTH;
-    if (command == "AMBIENT_LIGHT")         return COMMAND_AMBIENT_LIGHT;
-    if (command == "NEW_LIGHT")             return COMMAND_NEW_LIGHT;
-    if (command == "LIGHT_INTENSITY")       return COMMAND_LIGHT_INTENSITY;
-    if (command == "LIGHT_DIRECTION")       return COMMAND_LIGHT_DIRECTION;
-    if (command == "LIGHT_POSITION")        return COMMAND_LIGHT_POSITION;
-    if (command == "LIGHT_ATTENUATION")     return COMMAND_LIGHT_ATTENUATION;
     if (command == "METALLIC")              return COMMAND_METALLIC;
     if (command == "DIELECTRIC")            return COMMAND_DIELECTRIC;
     if (command == "IOR")                   return COMMAND_IOR;
+    if (command == "SAMPLES")               return COMMAND_SAMPLES;
+    if (command == "EMISSION")              return COMMAND_EMISSION;
 
     return -1;
 }
@@ -98,6 +94,10 @@ std::pair<std::unique_ptr<Primitive>, std::string> LoadPrimitive(std::istream &i
                 ss >> primitive->ior;
                 break;
             }            
+            case COMMAND_EMISSION: {
+                ss >> primitive->emission;
+                break;
+            }            
             
             default: {
                 std::cerr << "unexpected light(" << cmd_name << ")" << std::endl;
@@ -107,64 +107,6 @@ std::pair<std::unique_ptr<Primitive>, std::string> LoadPrimitive(std::istream &i
     }
  
     return std::make_pair(std::move(primitive), "");
-}
-
-std::unique_ptr<Light> createLightPtr(const Color& intens, const Point& pos, const Color& att, const Point& dir, bool isDirectedLight) {
-    if (isDirectedLight) {
-        return std::move(std::make_unique<DirectedLight>(DirectedLight(intens, dir)));
-    } else {
-        return std::move(std::make_unique<DotLight>(DotLight(intens, pos, att)));
-    }
-}
-
-std::pair<std::unique_ptr<Light>, std::string> LoadLight(std::istream &in) {
-    Color intens;
-    Point pos;
-    Color att;
-    Point dir;
-
-    bool isDirectedLight = false;
-
-    std::string cmds;
-    while (getline(in, cmds)) {
-        std::stringstream ss;
-        ss << cmds;
-        std::string cmd_name;
-        ss >> cmd_name;
-
-        auto cmd = get_command(cmd_name);
-        if(cmd==COMMAND_EMPTY) break;
-
-        switch (cmd) {
-            case COMMAND_LIGHT_INTENSITY: {
-                ss >> intens;
-                break;
-            }
-            case COMMAND_LIGHT_POSITION: {
-                ss >> pos;
-                break;
-            }
-            case COMMAND_LIGHT_DIRECTION: {
-                ss >> dir;
-                isDirectedLight = true;
-                break;
-            }
-            case COMMAND_LIGHT_ATTENUATION: {
-                ss >> att;
-                break;
-            }
-            
-            default: {
-                std::cerr << "unexpected primitive(" << cmd_name << ")" << std::endl;
-                std::unique_ptr<Light> light(createLightPtr(intens, pos, att, dir, isDirectedLight));
-                return std::make_pair(std::move(light), cmd_name);
-            }
-        }
-    }
-    
-    std::unique_ptr<Light> light(createLightPtr(intens, pos, att, dir, isDirectedLight));
- 
-    return std::make_pair(std::move(light), "");
 }
 
 void Scene::Load(std::istream &in) {
@@ -221,18 +163,8 @@ void Scene::Load(std::istream &in) {
                 ss >> ray_depth;
                 break;
             }
-            case COMMAND_AMBIENT_LIGHT: {
-                ss >> ambient_light;
-                break;
-            }
-            case COMMAND_NEW_LIGHT: {
-                auto [light, rest_cmd] = LoadLight(in);
-                lights.push_back(std::move(light));
-
-                cmd_name = rest_cmd;
-                if(!cmd_name.empty()) {
-                    goto pasrse_command_again;
-                }
+            case COMMAND_SAMPLES: {
+                ss >> samples;
                 break;
             }
             default: {
@@ -247,7 +179,7 @@ void Scene::Load(std::istream &in) {
 // SCENE RENDERING //
 /////////////////////
 
-Ray Camera::GetToRay(int x, int y) const {
+Ray Camera::GetToRay(float x, float y) const {
     float tan_fov_x = tan(fov_x / 2);
     float tan_fov_y = tan_fov_x * height / width;
 
@@ -283,7 +215,7 @@ static Point GetReflection(const Point& normal, const Point& dir) {
     return dir - 2.0 * normal * glm::dot(normal, dir);
 }
 
-Color Scene::RayTrace(const Ray& ray, size_t ost_raydepth) const {
+Color Scene::RayTrace(const Ray& ray, size_t ost_raydepth) {
     if (ost_raydepth == 0) {
         return {0., 0., 0.};
     }
@@ -300,32 +232,27 @@ Color Scene::RayTrace(const Ray& ray, size_t ost_raydepth) const {
 
     assert(glm::length(normal) <= 1 + eps);
     
+    Color other_color(0.f, 0.f, 0.f);
     switch (primitives[id]->material)
     {
     case Material::DIFFUSE: {
-        Color summary_color = ambient_light;
-        for (const auto &light : lights) {
-            auto [color, dir, dist] = light->CalcLight(p);
-            float koef = glm::dot(dir, normal);
-            if(koef >= 0) { // otherwise light is behind
-                bool is_point_between = (RayIntersection({p + eps * dir, dir}, dist).id != -1);
-                if(!is_point_between) {
-                    summary_color = {summary_color.rgb + koef * color.rgb}; 
-                }
-            }
+        // генерируем на единичной сфере при помощи normal + проекция
+        glm::vec3 rand_dir = glm::normalize(glm::vec3{get_next_uniform(), get_next_uniform(), get_next_uniform()});
+        // если не в той полусфере, то берём обратный
+        if (glm::dot(rand_dir,normal) < 0) {
+            rand_dir = -1. * rand_dir;
         }
-        summary_color = {summary_color.rgb * primitives[id]->col.rgb};
-        return summary_color;
+        Color rand_col = {2 * glm::dot(rand_dir, normal) * RayTrace(Ray({p + eps * rand_dir, rand_dir}), ost_raydepth-1).rgb};
+        other_color = {primitives[id]->col.rgb * rand_col.rgb};
         break;
     }
     case Material::METALLIC: {   
         Color reflected_color = RayTrace({p + eps * reflect_dir, reflect_dir}, ost_raydepth-1);     
-        return {primitives[id]->col.rgb * reflected_color.rgb};
+        other_color = {primitives[id]->col.rgb * reflected_color.rgb};
         break;
     }
     case Material::DIELECTRIC: {
         Color reflected_color = RayTrace({p + eps * reflect_dir, reflect_dir}, ost_raydepth-1);
-        Color summary_color = reflected_color;
 
         float eta1 = 1., eta2 = primitives[id]->ior;
         if (interior) {
@@ -335,38 +262,59 @@ Color Scene::RayTrace(const Ray& ray, size_t ost_raydepth) const {
         glm::vec3 dir = -1. * glm::normalize(ray.d);
         float dot_normal_dir = glm::dot(normal, dir);
         float sin_theta2 = eta1 / eta2 * sqrt(1 - dot_normal_dir * dot_normal_dir);
-        if (fabs(sin_theta2) > 1.) {
-            return summary_color;
+
+        float r0 = pow((eta1 - eta2) / (eta1 + eta2), 2.);
+        float r = r0 + (1 - r0) * pow(1 - dot_normal_dir, 5.);
+
+        if (fabs(sin_theta2) > 1.) { // полное внутреннее отражение = вернуть отражённый
+            other_color = reflected_color;
+            break;
+        }
+
+        // с шансом r вернем отражённый / 1-r соответственно преломлённый
+        if (get_next_uniform() < r) {
+            other_color = reflected_color;
+            break;
         }
 
         float cos_theta2 = sqrt(1 - sin_theta2 * sin_theta2);
         glm::vec3 refracted_dir = eta1 / eta2 * (-1. * dir) + (eta1 / eta2 * dot_normal_dir - cos_theta2) * normal;
         Ray refracted = Ray(p + eps * refracted_dir, refracted_dir);
-        Color refracted_component = RayTrace(refracted, ost_raydepth - 1);
+        Color refracted_color = RayTrace(refracted, ost_raydepth - 1);
         if (!interior) {
-            refracted_component = refracted_component.rgb * primitives[id]->col.rgb;
+            refracted_color = { primitives[id]->col.rgb * refracted_color.rgb };
         }
-
-        float r0 = pow((eta1 - eta2) / (eta1 + eta2), 2.);
-        float r = r0 + (1 - r0) * pow(1 - dot_normal_dir, 5.);
-        return r * reflected_color.rgb + (1 - r) * refracted_component.rgb;
+        other_color = refracted_color;
         break;
     }
     default:
         std::cerr<<"unknown material: primitive id(" << id << ")" << std::endl;
         break;
     }
-    return {0.f, 0.f, 0.f};
+    Color summary_color = {primitives[id]->emission.rgb + other_color.rgb};
+    return summary_color;
 }
 
-void Scene::Render(std::ostream &out) const {
+Color Scene::Sample(unsigned int x, unsigned int y) {
+    Color summary(0.f, 0.f, 0.f);
+    for(unsigned int i = 0; i < samples; ++i) {
+        // сглаживаем
+        float fx = x + get_next_uniform();
+        float fy = y + get_next_uniform();
+        summary = {summary.rgb + RayTrace(cam.GetToRay(fx, fy), ray_depth).rgb};
+    }
+    Color mean = {1.f / samples * summary.rgb };
+    return mean;
+}
+
+void Scene::Render(std::ostream &out) {
     out << "P6\n";
     out << cam.width << " " << cam.height << "\n";
     out << 255 << "\n";
 
-    for (int y = 0; y < cam.height; ++y) {
-        for (int x = 0; x < cam.width; ++x) {
-            Color color = RayTrace(cam.GetToRay(x, y), ray_depth);
+    for (unsigned int y = 0; y < cam.height; ++y) {
+        for (unsigned int x = 0; x < cam.width; ++x) {
+            Color color = Sample(x, y);
             color = AcesTonemap(color);
             color = GammaCorrected(color);
 
