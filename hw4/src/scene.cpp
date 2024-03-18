@@ -38,26 +38,26 @@ Camera::Camera(float fov_x) : fov_x(fov_x) {}
 ///////////////////
 
 void Scene::LoadDistribution() {
-    // std::vector<std::unique_ptr<Distribution>> prim_distribs;
-    // for (const std::unique_ptr<Primitive>& prim: primitives) {
-    //     if (prim->primitive_type == PRIMITIVE_TYPE::BOX) {
-    //         prim_distribs.emplace_back(
-    //             std::unique_ptr<Distribution>(
-    //                 new BoxDistribution(
-    //                     reinterpret_cast<Box*>(prim.get())
-    //                 )
-    //             )
-    //         );
-    //     } else if (prim->primitive_type == PRIMITIVE_TYPE::ELLIPSOID) {
-    //         prim_distribs.emplace_back(
-    //             std::unique_ptr<Distribution>(
-    //                 new EllipsoidDistribution(
-    //                     reinterpret_cast<Ellipsoid*>(prim.get())
-    //                 )
-    //             )
-    //         );
-    //     }
-    // }
+    std::vector<std::unique_ptr<Distribution>> prim_distribs;
+    for (const std::unique_ptr<Primitive>& prim: primitives) {
+        if (prim->primitive_type == PRIMITIVE_TYPE::BOX) {
+            prim_distribs.emplace_back(
+                std::unique_ptr<Distribution>(
+                    new BoxDistribution(
+                        reinterpret_cast<Box*>(prim.get())
+                    )
+                )
+            );
+        } else if (prim->primitive_type == PRIMITIVE_TYPE::ELLIPSOID) {
+            prim_distribs.emplace_back(
+                std::unique_ptr<Distribution>(
+                    new EllipsoidDistribution(
+                        reinterpret_cast<Ellipsoid*>(prim.get())
+                    )
+                )
+            );
+        }
+    }
 
     std::vector<std::unique_ptr<Distribution>> mix_distribs;
     mix_distribs.emplace_back(
@@ -365,8 +365,8 @@ void Scene::Render(std::ostream &out) {
     out << cam.width << " " << cam.height << "\n";
     out << 255 << "\n";
 
-    for (unsigned int y = 0; y < cam.height; ++y) {
-        for (unsigned int x = 0; x < cam.width; ++x) {
+    for (unsigned int y = 0; y < 1; ++y) {
+        for (unsigned int x = 0; x < 1; ++x) {
             Color color = Sample(x, y);
             color = AcesTonemap(color);
             color = GammaCorrected(color);
