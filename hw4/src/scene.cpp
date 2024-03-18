@@ -216,7 +216,7 @@ Ray Camera::GetToRay(float x, float y) const {
     return {pos, nx*right + ny*up + 1.f*forward};
 }
 
-ray_intersection_t Scene::RayIntersection(const Ray &ray, float tmax) const {
+ray_intersection_t Scene::RayIntersection(const Ray &ray) const {
     ray_intersection_t ret;
     ret.id = -1;
 
@@ -226,11 +226,9 @@ ray_intersection_t Scene::RayIntersection(const Ray &ray, float tmax) const {
         auto intersection = primitive->Intersect(ray);
         if (intersection.has_value()) {
             auto [t, _, __] = intersection.value();
-            if (t <= tmax) {
-                if (t < closest_dist) {
-                    closest_dist = t;
-                    ret = {intersection.value(), cur_id};
-                }
+            if (t < closest_dist) {
+                closest_dist = t;
+                ret = {intersection.value(), cur_id};
             }
         }
         ++cur_id;
@@ -247,7 +245,7 @@ Color Scene::RayTrace(const Ray& ray, size_t ost_raydepth) {
         return {0., 0., 0.};
     }
 
-    auto raytrace = RayIntersection(ray, 1e18);
+    auto raytrace = RayIntersection(ray);
     if (raytrace.id == -1) {
         return background;
     }
@@ -255,8 +253,6 @@ Color Scene::RayTrace(const Ray& ray, size_t ost_raydepth) {
     auto [t, normal, interior] = raytrace.isec;
     size_t id = raytrace.id;
     Point p = ray.o + t * ray.d;
-
-    assert(glm::length(normal) <= 1 + eps);
     
     Color other_color(0.f, 0.f, 0.f);
     switch (primitives[id]->material)

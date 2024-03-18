@@ -57,7 +57,7 @@ private:
     float eps = 1e-3;
     Uniform01Distribution uniform;
 
-    ray_intersection_t RayIntersection(const Ray& ray, float tmax) const;
+    ray_intersection_t RayIntersection(const Ray& ray) const;
     Color Sample(unsigned int x, unsigned int y);
     Color RayTrace(const Ray& ray, size_t ost_raydepth);
 public:
