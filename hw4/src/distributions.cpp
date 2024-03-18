@@ -157,7 +157,7 @@ here_we_go_again:
     Point pnt = {c1 * s_x, c2 * s_y, c3 * s_z};
     if (u < w_x) { // перпенд оси X
         pnt.x = side * s_x;
-    } else if (u < w_x + w_z) { // перпенд оси Y
+    } else if (u < w_x + w_y) { // перпенд оси Y
         pnt.y = side * s_y;
     } else { // перпенд оси Z
         pnt.z = side * s_z;
