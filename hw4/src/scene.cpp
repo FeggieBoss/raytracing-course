@@ -220,14 +220,14 @@ ray_intersection_t Scene::RayIntersection(const Ray &ray, float tmax) const {
     ray_intersection_t ret;
     ret.id = -1;
 
-    float closest_dist = -1;
+    float closest_dist = 2e9;
     int cur_id = 0;
     for (auto &primitive : primitives) {
         auto intersection = primitive->Intersect(ray);
         if (intersection.has_value()) {
             auto [t, _, __] = intersection.value();
             if (t <= tmax) {
-                if (closest_dist == -1 || t < closest_dist) {
+                if (t < closest_dist) {
                     closest_dist = t;
                     ret = {intersection.value(), cur_id};
                 }
