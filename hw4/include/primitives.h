@@ -8,6 +8,8 @@
 
 #include <algorithm>
 #include <optional>
+#include <cmath>
+#include <iostream>
 
 enum PRIMITIVE_TYPE {
     PLANE     = (1<<0),

@@ -1,5 +1,4 @@
 #include "primitives.h"
-#include <cmath>
 
 Primitive::Primitive(PRIMITIVE_TYPE primitive_type): primitive_type(primitive_type) {}
 Primitive::Primitive(PRIMITIVE_TYPE primitive_type, const Point& dop_data): primitive_type(primitive_type), dop_data(dop_data) {}
@@ -8,23 +7,25 @@ std::optional<intersection_t> Primitive::Intersect(const Ray &r) const {
     Ray transformed = transform(rotator, (r + -1*pos));
     
     std::optional<intersection_t> isec = std::nullopt;
-    switch (primitive_type)
-    {
-    case PRIMITIVE_TYPE::PLANE: {
-        isec = intersectPlane(transformed);
-        break;
-    }
-    case PRIMITIVE_TYPE::BOX: {
-        isec = intersectBox(transformed);
-        break;
-    }
-    case PRIMITIVE_TYPE::ELLIPSOID: {
-        isec = intersectEllipsoid(transformed);
-        break;
-    }
-    
-    default:
-        break;
+    switch (primitive_type) {
+        case PRIMITIVE_TYPE::PLANE: {
+            isec = intersectPlane(transformed);
+            break;
+        }
+        case PRIMITIVE_TYPE::BOX: {
+            isec = intersectBox(transformed);
+            break;
+        }
+        case PRIMITIVE_TYPE::ELLIPSOID: {
+            isec = intersectEllipsoid(transformed);
+            break;
+        }
+        
+        default: {
+            std::cerr << "unexpected primitive type(" << primitive_type << ") in intersection" << std::endl;
+            exit(1);
+            break;
+        }
     }
     
     if (isec.has_value()) {
