@@ -77,12 +77,12 @@ class BoxDistribution : public Distribution {
 private:
     static constexpr float eps = 1e-3;
 
-    const Box* box_;
+    const Primitive* box_;
     Uniform01Distribution uniform;
 
     float pdfPoint(float dist2, glm::vec3 y, glm::vec3 n, glm::vec3 d) const;
 public:
-    BoxDistribution(const Box* box);
+    BoxDistribution(const Primitive* box);
 
     glm::vec3 sample(glm::vec3 x, glm::vec3 n) override;
     float pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const override;
@@ -93,12 +93,12 @@ class EllipsoidDistribution : public Distribution {
 private:
     static constexpr float eps = 1e-3;
 
-    const Ellipsoid* ellipsoid_;
+    const Primitive* ellipsoid_;
     Normal01Distribution normal;
 
     float pdfPoint(float dist2, glm::vec3 y, glm::vec3 n, glm::vec3 d) const;
 public:
-    EllipsoidDistribution(const Ellipsoid* ellipsoid);
+    EllipsoidDistribution(const Primitive* ellipsoid);
 
     glm::vec3 sample(glm::vec3 x, glm::vec3 n) override;
     float pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const override;

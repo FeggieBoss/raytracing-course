@@ -23,7 +23,9 @@ struct intersection_t {
 
 class Primitive {
 private:
-    virtual std::optional<intersection_t> intersect(const Ray &r) const = 0;
+    std::optional<intersection_t> intersectPlane(const Ray &r) const;
+    std::optional<intersection_t> intersectBox(const Ray &r) const;
+    std::optional<intersection_t> intersectEllipsoid(const Ray &r) const;
 
 public:
     PRIMITIVE_TYPE primitive_type;
@@ -34,10 +36,19 @@ public:
     Material material = Material::DIFFUSE;
     float ior = 0.;
 
+    /*
+        Plane     - n
+        Box       - s
+        Ellipsoid - r
+    */
+    Point dop_data;
+
     Primitive(PRIMITIVE_TYPE primitive_type);
+    Primitive(PRIMITIVE_TYPE primitive_type, const Point& dop_data);
     std::optional<intersection_t> Intersect(const Ray &r) const;
 };
 
+/*
 class Plane : public Primitive {
 private:
     std::optional<intersection_t> intersect(const Ray &r) const override;
@@ -71,5 +82,6 @@ public:
     Ellipsoid() = default;
     Ellipsoid(const Point &r);
 };
+*/
 
 #endif // DEFINE_PRIMITIVES_H

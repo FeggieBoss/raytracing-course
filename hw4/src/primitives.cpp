@@ -2,10 +2,31 @@
 #include <cmath>
 
 Primitive::Primitive(PRIMITIVE_TYPE primitive_type): primitive_type(primitive_type) {}
+Primitive::Primitive(PRIMITIVE_TYPE primitive_type, const Point& dop_data): primitive_type(primitive_type), dop_data(dop_data) {}
 
 std::optional<intersection_t> Primitive::Intersect(const Ray &r) const {
     Ray transformed = transform(rotator, (r + -1*pos));
-    auto isec = intersect(transformed);
+    
+    std::optional<intersection_t> isec = std::nullopt;
+    switch (primitive_type)
+    {
+    case PRIMITIVE_TYPE::PLANE: {
+        isec = intersectPlane(transformed);
+        break;
+    }
+    case PRIMITIVE_TYPE::BOX: {
+        isec = intersectBox(transformed);
+        break;
+    }
+    case PRIMITIVE_TYPE::ELLIPSOID: {
+        isec = intersectEllipsoid(transformed);
+        break;
+    }
+    
+    default:
+        break;
+    }
+    
     if (isec.has_value()) {
         auto [t, normal, interior] = isec.value();
         normal = transform(glm::conjugate(rotator), normal);
@@ -16,9 +37,9 @@ std::optional<intersection_t> Primitive::Intersect(const Ray &r) const {
 }
 
 // PLANE
-Plane::Plane(const Point &n): Primitive(PRIMITIVE_TYPE::PLANE), n(n) {}
+std::optional<intersection_t> Primitive::intersectPlane(const Ray &r) const {
+    auto n = dop_data;
 
-std::optional<intersection_t> Plane::intersect(const Ray &r) const {
     float t = -glm::dot(r.o, n) / glm::dot(r.d, n);
     if (t > 0) { 
         if (glm::dot(r.d, n) >= 0) // внутри, тк нормаль соноправлена с лучом
@@ -30,9 +51,9 @@ std::optional<intersection_t> Plane::intersect(const Ray &r) const {
 
 
 // BOX
-Box::Box(const Point &s): Primitive(PRIMITIVE_TYPE::BOX), s(s) {}
-
-std::optional<intersection_t> Box::intersect(const Ray &r) const {
+std::optional<intersection_t> Primitive::intersectBox(const Ray &r) const {
+    auto s = dop_data;
+    
     Point t1xyz = (-1.f * s - r.o) / r.d;
     Point t2xyz = (       s - r.o) / r.d;
 
@@ -82,9 +103,9 @@ std::optional<intersection_t> Box::intersect(const Ray &r) const {
 }
 
 // Ellipsoid
-Ellipsoid::Ellipsoid(const Point &r): Primitive(PRIMITIVE_TYPE::ELLIPSOID), r(r) {}
+std::optional<intersection_t> Primitive::intersectEllipsoid(const Ray &ray) const {
+    auto r = dop_data;
 
-std::optional<intersection_t> Ellipsoid::intersect(const Ray &ray) const {
     float a = glm::dot(ray.d / r, ray.d / r);
     float b = 2 * glm::dot(ray.o / r, ray.d / r);
     float c = glm::dot(ray.o / r, ray.o / r) - 1;

@@ -46,17 +46,13 @@ void Scene::LoadDistribution() {
         if (prim->primitive_type == PRIMITIVE_TYPE::BOX) {
             prim_distribs.emplace_back(
                 std::unique_ptr<Distribution>(
-                    new BoxDistribution(
-                        reinterpret_cast<Box*>(prim.get())
-                    )
+                    new BoxDistribution(prim.get())
                 )
             );
         } else if (prim->primitive_type == PRIMITIVE_TYPE::ELLIPSOID) {
             prim_distribs.emplace_back(
                 std::unique_ptr<Distribution>(
-                    new EllipsoidDistribution(
-                        reinterpret_cast<Ellipsoid*>(prim.get())
-                    )
+                    new EllipsoidDistribution(prim.get())
                 )
             );
         }
@@ -95,19 +91,19 @@ std::pair<std::unique_ptr<Primitive>, std::string> LoadPrimitive(std::istream &i
             case COMMAND_ELLIPSOID: {
                 Point r;
                 ss >> r;
-                primitive = std::unique_ptr<Primitive>(new Ellipsoid(r));
+                primitive = std::unique_ptr<Primitive>(new Primitive(PRIMITIVE_TYPE::ELLIPSOID, r));
                 break;
             }
             case COMMAND_PLANE: {
                 Point n;
                 ss >> n;
-                primitive = std::unique_ptr<Primitive>(new Plane(n));
+                primitive = std::unique_ptr<Primitive>(new Primitive(PRIMITIVE_TYPE::PLANE, n));
                 break;
             }
             case COMMAND_BOX: {
                 Point s;
                 ss >> s;
-                primitive = std::unique_ptr<Primitive>(new Box(s));
+                primitive = std::unique_ptr<Primitive>(new Primitive(PRIMITIVE_TYPE::BOX, s));
                 break;
             }
             case COMMAND_COLOR: {

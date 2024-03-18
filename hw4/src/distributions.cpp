@@ -126,14 +126,16 @@ static std::pair<std::optional<intersection_t>, std::optional<intersection_t>> G
 //     BOX       //
 ///////////////////
 
-BoxDistribution::BoxDistribution(const Box* box): box_(box) {}
+BoxDistribution::BoxDistribution(const Primitive* box): box_(box) {}
 
 glm::vec3 BoxDistribution::sample(glm::vec3 x, glm::vec3 n) {
     (void) n;
+
+    auto s = box_->dop_data;
     
-    float s_x = box_->s.x;
-    float s_y = box_->s.y;
-    float s_z = box_->s.z;
+    float s_x = s.x;
+    float s_y = s.y;
+    float s_z = s.z;
 
     float w_x = s_x * s_x;
     float w_y = s_y * s_y;
@@ -163,9 +165,11 @@ glm::vec3 BoxDistribution::sample(glm::vec3 x, glm::vec3 n) {
 float BoxDistribution::pdfPoint(float dist2, glm::vec3 y, glm::vec3 n, glm::vec3 d) const {
     (void) y;
 
-    float s_x = box_->s.x;
-    float s_y = box_->s.y;
-    float s_z = box_->s.z;
+    auto s = box_->dop_data;
+
+    float s_x = s.x;
+    float s_y = s.y;
+    float s_z = s.z;
 
     float w_x = s_x * s_x;
     float w_y = s_y * s_y;
@@ -202,12 +206,12 @@ float BoxDistribution::pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
 //   Ellipsoid   //
 ///////////////////
 
-EllipsoidDistribution::EllipsoidDistribution(const Ellipsoid* ellipsoid): ellipsoid_(ellipsoid) {}
+EllipsoidDistribution::EllipsoidDistribution(const Primitive* ellipsoid): ellipsoid_(ellipsoid) {}
 
 glm::vec3 EllipsoidDistribution::sample(glm::vec3 x, glm::vec3 n) {
     (void) n;
     
-    glm::vec3 r = ellipsoid_->r;
+    glm::vec3 r = ellipsoid_->dop_data;
     glm::vec3 k = normal.sample(x, n);
 
     Point pnt = r * k;
@@ -217,7 +221,7 @@ glm::vec3 EllipsoidDistribution::sample(glm::vec3 x, glm::vec3 n) {
 }
 
 float EllipsoidDistribution::pdfPoint(float dist2, glm::vec3 y, glm::vec3 n_, glm::vec3 d) const {
-    glm::vec3 r = ellipsoid_->r;
+    glm::vec3 r = ellipsoid_->dop_data;
     glm::vec3 n = transform(ellipsoid_->rotator, y - ellipsoid_->pos) / r;
     float p_y = 1. / (4 * kPI * glm::length(glm::vec3{n.x * r.y * r.z, r.x * n.y * r.z, r.x * r.y * n.z}));
     return p_y * (dist2 / fabs(glm::dot(d, n_)));
