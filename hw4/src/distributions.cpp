@@ -103,7 +103,8 @@ static std::pair<std::optional<intersection_t>, std::optional<intersection_t>> G
     auto [t, normal1, _] = closestInter.value();
     // debug
     if (t <= 1e-8) {
-        exit(1);
+        std::cerr << "GetPointsForPdf unexpected intersection t(" << t << ")" << std::endl;
+        return std::make_pair(std::nullopt, std::nullopt);
     }
     //
 
