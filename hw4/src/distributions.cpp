@@ -274,11 +274,12 @@ float MixDistribution::pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
     (void) n;
     
     float prim_sum = 0;
-    for(const auto& distrib : distribs_) {
-        prim_sum += distrib->pdf(x, n, d);
+    if (!distribs_.empty()) {
+        for(const auto& distrib : distribs_) {
+            prim_sum += distrib->pdf(x, n, d);
+        }
+        prim_sum /= 1. * distribs_.size();
     }
-    prim_sum /= 1. * distribs_.size();
-
     float sum = 0.5f * cosine_distrib.pdf(x, n, d) + 0.5f * prim_sum;
     return sum;
 }
