@@ -40,6 +40,9 @@ Camera::Camera(float fov_x) : fov_x(fov_x) {}
 void Scene::LoadDistribution() {
     std::vector<std::unique_ptr<Distribution>> prim_distribs;
     for (const std::unique_ptr<Primitive>& prim: primitives) {
+        if (!(prim->emission.r() > 0 || prim->emission.g() > 0 || prim->emission.b() > 0)) {
+            continue;
+        }
         if (prim->primitive_type == PRIMITIVE_TYPE::BOX) {
             prim_distribs.emplace_back(
                 std::unique_ptr<Distribution>(
