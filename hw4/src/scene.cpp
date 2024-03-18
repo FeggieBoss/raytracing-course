@@ -63,11 +63,11 @@ void Scene::LoadDistribution() {
     mix_distribs.emplace_back(
         std::unique_ptr<Distribution>(new CosineDistribution())
     );
-    // if (!prim_distribs.empty()) {
-    //     mix_distribs.emplace_back(
-    //         std::unique_ptr<Distribution>(new MixDistribution(std::move(prim_distribs)))
-    //     );
-    // }
+    if (!prim_distribs.empty()) {
+        mix_distribs.emplace_back(
+            std::unique_ptr<Distribution>(new MixDistribution(std::move(prim_distribs)))
+        );
+    }
     mix_distrib = std::unique_ptr<MixDistribution>(new MixDistribution(std::move(mix_distribs)));
 }
 
@@ -350,7 +350,7 @@ Color Scene::RayTrace(const Ray& ray, size_t ost_raydepth) {
 
 Color Scene::Sample(unsigned int x, unsigned int y) {
     Color summary(0.f, 0.f, 0.f);
-    for(unsigned int i = 0; i < 10; ++i) {
+    for(unsigned int i = 0; i < samples; ++i) {
         // сглаживаем
         float fx = x + uniform.sample();
         float fy = y + uniform.sample();
@@ -367,7 +367,7 @@ void Scene::Render(std::ostream &out) {
 
     for (unsigned int y = 0; y < cam.height; ++y) {
         for (unsigned int x = 0; x < cam.width; ++x) {
-            Color color(0.f,0.f,0.f);
+            Color color = Sample(x, y);
             color = AcesTonemap(color);
             color = GammaCorrected(color);
 
