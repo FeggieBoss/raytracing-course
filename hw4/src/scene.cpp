@@ -350,7 +350,7 @@ Color Scene::RayTrace(const Ray& ray, size_t ost_raydepth) {
 
 Color Scene::Sample(unsigned int x, unsigned int y) {
     Color summary(0.f, 0.f, 0.f);
-    for(unsigned int i = 0; i < samples; ++i) {
+    for(unsigned int i = 0; i < samples / 2; ++i) {
         // сглаживаем
         float fx = x + uniform.sample();
         float fy = y + uniform.sample();
