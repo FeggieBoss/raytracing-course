@@ -3,14 +3,14 @@
 
 Primitive::Primitive(PRIMITIVE_TYPE primitive_type): primitive_type(primitive_type) {}
 
-std::optional<std::pair<intersection_t, Color>> Primitive::colorIntersect(const Ray &r) const {
+std::optional<intersection_t> Primitive::Intersect(const Ray &r) const {
     Ray transformed = transform(rotator, (r + -1*pos));
     auto isec = intersect(transformed);
     if (isec.has_value()) {
         auto [t, normal, interior] = isec.value();
         normal = transform(glm::conjugate(rotator), normal);
         normal = glm::normalize(normal);
-        return std::make_pair(intersection_t {t, normal, interior}, col);
+        return intersection_t{t, normal, interior};
     }
     return {};
 }

@@ -35,7 +35,7 @@ public:
     float ior = 0.;
 
     Primitive(PRIMITIVE_TYPE primitive_type);
-    std::optional<std::pair<intersection_t, Color>> colorIntersect(const Ray &r) const;
+    std::optional<intersection_t> Intersect(const Ray &r) const;
 };
 
 class Plane : public Primitive {

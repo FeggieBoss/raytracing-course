@@ -63,11 +63,11 @@ void Scene::LoadDistribution() {
     mix_distribs.emplace_back(
         std::unique_ptr<Distribution>(new CosineDistribution())
     );
-    // if (!prim_distribs.empty()) {
-    //     mix_distribs.emplace_back(
-    //         std::unique_ptr<Distribution>(new MixDistribution(std::move(prim_distribs)))
-    //     );
-    // }
+    if (!prim_distribs.empty()) {
+        mix_distribs.emplace_back(
+            std::unique_ptr<Distribution>(new MixDistribution(std::move(prim_distribs)))
+        );
+    }
     mix_distrib = std::unique_ptr<MixDistribution>(new MixDistribution(std::move(mix_distribs)));
 }
 
@@ -234,13 +234,13 @@ ray_intersection_t Scene::RayIntersection(const Ray &ray, float tmax) const {
     float closest_dist = -1;
     int cur_id = 0;
     for (auto &primitive : primitives) {
-        auto intersection = primitive->colorIntersect(ray);
+        auto intersection = primitive->Intersect(ray);
         if (intersection.has_value()) {
-            auto [isec, _] = intersection.value();
-            if (isec.t <= tmax) {
-                if (closest_dist == -1 || isec.t < closest_dist) {
-                    closest_dist = isec.t;
-                    ret = {isec, cur_id};
+            auto [t, _, __] = intersection.value();
+            if (t <= tmax) {
+                if (closest_dist == -1 || t < closest_dist) {
+                    closest_dist = t;
+                    ret = {intersection.value(), cur_id};
                 }
             }
         }

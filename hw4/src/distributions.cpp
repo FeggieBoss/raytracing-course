@@ -95,12 +95,12 @@ float CosineDistribution::pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
 ///////////////////
 
 static std::pair<std::optional<intersection_t>, std::optional<intersection_t>> GetPointsForPdf(const Primitive* prim, glm::vec3 x, glm::vec3 d) {
-    auto closestInter = prim->colorIntersect(Ray(x, d));
+    auto closestInter = prim->Intersect(Ray(x, d));
     if (!closestInter.has_value()) {
         return std::make_pair(std::nullopt, std::nullopt);
     }
 
-    auto [t, normal1, _] = closestInter.value().first;
+    auto [t, normal1, _] = closestInter.value();
     // debug
     if (t <= 1e-8) {
         exit(1);
@@ -109,19 +109,16 @@ static std::pair<std::optional<intersection_t>, std::optional<intersection_t>> G
 
     Point innerPoint = x + (t + 1e-3) * d;
 
-    auto secondInter = prim->colorIntersect(Ray(innerPoint, d));
+    auto secondInter = prim->Intersect(Ray(innerPoint, d));
     if (!secondInter.has_value()) {
-        return std::make_pair(
-            std::optional<intersection_t>{closestInter.value().first}, 
-            std::nullopt
-        );
+        return std::make_pair(intersection_t{closestInter.value()}, std::nullopt);
     }
 
-    secondInter.value().first.t += t + 1e-3;
+    secondInter.value().t += t + 1e-3;
     
     return std::make_pair(
-        std::optional<intersection_t>{closestInter.value().first}, 
-        std::optional<intersection_t>{secondInter.value().first}
+        intersection_t{closestInter.value()}, 
+        intersection_t{secondInter.value()}
     );
 }
 
