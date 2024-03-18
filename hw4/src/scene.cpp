@@ -367,7 +367,7 @@ void Scene::Render(std::ostream &out) {
 
     for (unsigned int y = 0; y < cam.height; ++y) {
         for (unsigned int x = 0; x < cam.width; ++x) {
-            Color color = (0.f,0.f,0.f);
+            Color color(0.f,0.f,0.f);
             color = AcesTonemap(color);
             color = GammaCorrected(color);
 
