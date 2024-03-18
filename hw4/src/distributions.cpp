@@ -258,6 +258,10 @@ MixDistribution::MixDistribution(std::vector<std::unique_ptr<Distribution>>&& di
 
 glm::vec3 MixDistribution::sample(glm::vec3 x, glm::vec3 n) {
     (void) n;
+
+    if (distribs_.empty() || uniform.sample() <= 0.5f) {
+        return cosine_distrib.sample(x, n);
+    }
     
     float fid = uniform.sample(); // float [0,1]
     size_t id = std::floor(fid * distribs_.size()); // int [0,size-1]
@@ -269,11 +273,12 @@ glm::vec3 MixDistribution::sample(glm::vec3 x, glm::vec3 n) {
 float MixDistribution::pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
     (void) n;
     
-    float sum = 0;
+    float prim_sum = 0;
     for(const auto& distrib : distribs_) {
-        sum += distrib->pdf(x, n, d);
+        prim_sum += distrib->pdf(x, n, d);
     }
-    sum /= 1. * distribs_.size();
+    prim_sum /= 1. * distribs_.size();
 
+    float sum = 0.5f * cosine_distrib.pdf(x, n, d) + 0.5f * prim_sum;
     return sum;
 }

@@ -108,6 +108,7 @@ public:
 class MixDistribution : public Distribution {
 private:
     std::vector<std::unique_ptr<Distribution>> distribs_;
+    CosineDistribution cosine_distrib;
     Uniform01Distribution uniform;
 
 public:
