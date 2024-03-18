@@ -79,9 +79,12 @@ glm::vec3 CosineDistribution::sample(glm::vec3 x, glm::vec3 n) {
 
     glm::vec3 dir = normal01.sample(x ,n);
     dir = dir + n;
+
     if (glm::dot(dir, n) <= eps) {
         return n;
     }
+    assert(glm::length(dir) > 1e-4);
+
     return glm::normalize(dir);
 }
 
@@ -108,14 +111,14 @@ static std::pair<std::optional<intersection_t>, std::optional<intersection_t>> G
     }
     //
 
-    Point innerPoint = x + (t + 1e-3) * d;
+    Point innerPoint = x + (t + 1e-4) * d;
 
     auto secondInter = prim->Intersect(Ray(innerPoint, d));
     if (!secondInter.has_value()) {
         return std::make_pair(intersection_t{closestInter.value()}, std::nullopt);
     }
 
-    secondInter.value().t += t + 1e-3;
+    secondInter.value().t += t + 1e-4;
     
     return std::make_pair(
         intersection_t{closestInter.value()}, 
@@ -142,6 +145,7 @@ glm::vec3 BoxDistribution::sample(glm::vec3 x, glm::vec3 n) {
     float w_y = s_y * s_y;
     float w_z = s_z * s_z;
 
+here_we_go_again:
     float u = uniform.sample();
     float side = (uniform.sample() <= 0.5 ? 1 : -1);
     u *= w_x + w_y + w_z;
@@ -160,6 +164,13 @@ glm::vec3 BoxDistribution::sample(glm::vec3 x, glm::vec3 n) {
     }
 
     Point on_box = transform(glm::conjugate(box_->rotator), pnt) + box_->pos;
+
+    bool valid_generator = box_->Intersect(Ray{x, glm::normalize(on_box - x)}).has_value();
+    if (!valid_generator) {
+        // ?! ?! ?!
+        goto here_we_go_again;
+    }
+
     return glm::normalize(on_box - x);
 }
 
@@ -177,7 +188,7 @@ float BoxDistribution::pdfPoint(float dist2, glm::vec3 y, glm::vec3 n, glm::vec3
     float w_z = s_z * s_z;
 
     float p_y = 1. / (2 * 4 * (w_x + w_y + w_z));
-    return p_y * (dist2 / fabs(glm::dot(d, n)));
+    return p_y * dist2 / fabs(glm::dot(d, n));
 }
 
 float BoxDistribution::pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
@@ -213,11 +224,19 @@ glm::vec3 EllipsoidDistribution::sample(glm::vec3 x, glm::vec3 n) {
     (void) n;
     
     glm::vec3 r = ellipsoid_->dop_data;
+here_we_go_again:
     glm::vec3 k = normal.sample(x, n);
 
     Point pnt = r * k;
 
     Point on_ellipsoid = transform(glm::conjugate(ellipsoid_->rotator), pnt) + ellipsoid_->pos;
+
+    bool valid_generator = ellipsoid_->Intersect(Ray{x, glm::normalize(on_ellipsoid - x)}).has_value();
+    if (!valid_generator) {
+        // ?! ?! ?!
+        goto here_we_go_again;
+    }
+    
     return glm::normalize(on_ellipsoid - x);
 }
 
@@ -225,7 +244,7 @@ float EllipsoidDistribution::pdfPoint(float dist2, glm::vec3 y, glm::vec3 n_, gl
     glm::vec3 r = ellipsoid_->dop_data;
     glm::vec3 n = transform(ellipsoid_->rotator, y - ellipsoid_->pos) / r;
     float p_y = 1. / (4 * kPI * glm::length(glm::vec3{n.x * r.y * r.z, r.x * n.y * r.z, r.x * r.y * n.z}));
-    return p_y * (dist2 / fabs(glm::dot(d, n_)));
+    return p_y * dist2 / fabs(glm::dot(d, n_));
 }
 
 float EllipsoidDistribution::pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
@@ -233,6 +252,7 @@ float EllipsoidDistribution::pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
     
     auto [inter1, inter2] = GetPointsForPdf(reinterpret_cast<const Primitive*>(ellipsoid_), x, d);
     if (!inter1.has_value()) {
+        std::cerr << "Ellipsoid pdf no intersection" << std::endl;
         return 0.f;
     }
 

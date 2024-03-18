@@ -262,11 +262,11 @@ Color Scene::RayTrace(const Ray& ray, size_t ost_raydepth) {
         
         // moving from surface a lil bit
         glm::vec3 p_outer = p + eps * normal;
-        // генерируем на единичной сфере при помощи mix_distribution
+        // генерируем случайное направление при помощи mix_distribution
         glm::vec3 rand_dir = mix_distrib->sample(p_outer, normal);
         
-        // если не в той полусфере, то значит доп освещения не будет
-        if (glm::dot(rand_dir,normal) < 0) {
+        // если не в той полусфере, то не учитываем дополнительный свет
+        if (glm::dot(rand_dir,normal) <= 0) {
             break;
         }
 
