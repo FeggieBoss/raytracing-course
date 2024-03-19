@@ -54,7 +54,7 @@ struct ray_intersection_t {
 
 class Scene {
 private:
-    float eps = 1e-4;
+    static constexpr float eps = 1e-4;
     Uniform01Distribution uniform;
 
     ray_intersection_t RayIntersection(const Ray& ray) const;

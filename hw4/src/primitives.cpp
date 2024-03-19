@@ -41,6 +41,9 @@ std::optional<intersection_t> Primitive::intersectPlane(const Ray &r) const {
     auto n = dop_data;
 
     float t = -glm::dot(r.o, n) / glm::dot(r.d, n);
+    if (t > 1e5) {
+        return {};
+    }
     if (t > 0) { 
         if (glm::dot(r.d, n) >= 0) // внутри, тк нормаль соноправлена с лучом
             return intersection_t {t, -1. * n, true};

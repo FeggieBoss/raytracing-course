@@ -111,14 +111,15 @@ static std::pair<std::optional<intersection_t>, std::optional<intersection_t>> G
     }
     //
 
-    Point innerPoint = x + (t + 1e-4) * d;
+    static constexpr float eps = 1e-4;
+    Point innerPoint = x + (t + eps) * d;
 
     auto secondInter = prim->Intersect(Ray(innerPoint, d));
     if (!secondInter.has_value()) {
         return std::make_pair(intersection_t{closestInter.value()}, std::nullopt);
     }
 
-    secondInter.value().t += t + 1e-4;
+    secondInter.value().t += t + eps;
     
     return std::make_pair(
         intersection_t{closestInter.value()}, 
@@ -165,13 +166,14 @@ here_we_go_again:
 
     Point on_box = transform(glm::conjugate(box_->rotator), pnt) + box_->pos;
 
-    bool valid_generator = box_->Intersect(Ray{x, glm::normalize(on_box - x)}).has_value();
+    glm::vec3 sample_ = glm::normalize(on_box - x);
+    bool valid_generator = box_->Intersect(Ray{x, sample_}).has_value();
     if (!valid_generator) {
         // ?! ?! ?!
         goto here_we_go_again;
     }
 
-    return glm::normalize(on_box - x);
+    return sample_;
 }
 
 float BoxDistribution::pdfPoint(float dist2, glm::vec3 y, glm::vec3 n, glm::vec3 d) const {
@@ -196,7 +198,8 @@ float BoxDistribution::pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
     
     auto [inter1, inter2] = GetPointsForPdf(reinterpret_cast<const Primitive*>(box_), x, d);
     if (!inter1.has_value()) {
-        return 0.f;
+        //std::cerr << "Box pdf no intersection" << std::endl;
+        return 1e-9f;
     }
 
     auto [t1, normal1, _] =  inter1.value();
@@ -231,13 +234,14 @@ here_we_go_again:
 
     Point on_ellipsoid = transform(glm::conjugate(ellipsoid_->rotator), pnt) + ellipsoid_->pos;
 
-    bool valid_generator = ellipsoid_->Intersect(Ray{x, glm::normalize(on_ellipsoid - x)}).has_value();
+    glm::vec3 sample_ = glm::normalize(on_ellipsoid - x);
+    bool valid_generator = ellipsoid_->Intersect(Ray{x, sample_}).has_value();
     if (!valid_generator) {
         // ?! ?! ?!
         goto here_we_go_again;
     }
     
-    return glm::normalize(on_ellipsoid - x);
+    return sample_;
 }
 
 float EllipsoidDistribution::pdfPoint(float dist2, glm::vec3 y, glm::vec3 n_, glm::vec3 d) const {
@@ -252,8 +256,8 @@ float EllipsoidDistribution::pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
     
     auto [inter1, inter2] = GetPointsForPdf(reinterpret_cast<const Primitive*>(ellipsoid_), x, d);
     if (!inter1.has_value()) {
-        std::cerr << "Ellipsoid pdf no intersection" << std::endl;
-        return 0.f;
+        //std::cerr << "Ellipsoid pdf no intersection" << std::endl;
+        return 1e-9f;
     }
 
     auto [t1, normal1, _] =  inter1.value();
@@ -300,7 +304,7 @@ float MixDistribution::pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
         for(const auto& distrib : distribs_) {
             prim_sum += distrib->pdf(x, n, d);
         }
-        prim_sum /= 1. * distribs_.size();
+        prim_sum *= 1.f / distribs_.size();
 
         sum = 0.5f * sum + 0.5f * prim_sum;
     }
