@@ -64,6 +64,8 @@ void Scene::LoadDistribution() {
 // SCENE LOADING //
 ///////////////////
 
+Uniform01Distribution Scene::uniform = Uniform01Distribution();
+
 std::pair<std::unique_ptr<Primitive>, std::string> LoadPrimitive(std::istream &in) {
     std::unique_ptr<Primitive> primitive;
 
@@ -106,7 +108,6 @@ std::pair<std::unique_ptr<Primitive>, std::string> LoadPrimitive(std::istream &i
             }
             case COMMAND_ROTATION: {
                 ss >> primitive->rotator;
-                primitive->rotator.w *= -1;
                 break;
             }            
             case COMMAND_METALLIC: {
@@ -206,16 +207,6 @@ void Scene::Load(std::istream &in) {
 // SCENE RENDERING //
 /////////////////////
 
-Ray Camera::GetToRay(float x, float y) const {
-    float tan_fov_x = tan(fov_x / 2);
-    float tan_fov_y = tan_fov_x * height / width;
-
-    float nx =        (2 * (x + 0.5) / width  - 1) * tan_fov_x;
-    float ny = -1.f * (2 * (y + 0.5) / height - 1) * tan_fov_y;
-
-    return {pos, nx*right + ny*up + 1.f*forward};
-}
-
 ray_intersection_t Scene::RayIntersection(const Ray &ray) const {
     ray_intersection_t ret;
     ret.id = -1;
@@ -264,7 +255,7 @@ Color Scene::RayTrace(const Ray& ray, size_t ost_raydepth) {
         glm::vec3 p_outer = p + eps * normal;
         // генерируем случайное направление при помощи mix_distribution
         glm::vec3 rand_dir = mix_distrib->sample(p_outer, normal);
-        
+
         // если не в той полусфере, то не учитываем дополнительный свет
         if (glm::dot(rand_dir,normal) <= 0) {
             break;
@@ -329,12 +320,24 @@ Color Scene::RayTrace(const Ray& ray, size_t ost_raydepth) {
         std::cerr<<"unknown material: primitive id(" << id << ")" << std::endl;
         break;
     }
+
     Color summary_color = {primitives[id]->emission.rgb + other_color.rgb};
     return summary_color;
 }
 
+Ray Camera::GetToRay(float x, float y) const {
+    float tan_fov_x = tan(fov_x / 2);
+    float tan_fov_y = tan_fov_x * height / width;
+
+    float nx =        (2 * x / width  - 1) * tan_fov_x;
+    float ny = -1.f * (2 * y / height - 1) * tan_fov_y;
+
+    return {pos, nx*right + ny*up + 1.f*forward};
+}
+
 Color Scene::Sample(unsigned int x, unsigned int y) {
     Color summary(0.f, 0.f, 0.f);
+
     for(unsigned int i = 0; i < samples; ++i) {
         // сглаживаем
         float fx = x + uniform.sample();
