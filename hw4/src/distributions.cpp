@@ -1,8 +1,13 @@
 #include "distributions.h"
 
 std::minstd_rand Distribution::rnd;
-std::uniform_real_distribution<float> Uniform01Distribution::uniform(0,1);
-std::uniform_real_distribution<float> Normal01Distribution::normal(0,1);
+std::uniform_real_distribution<float> Uniform01Distribution::uniform(0.f,1.f);
+std::normal_distribution<float> Normal01Distribution::normal(0.f,1.f);
+Normal01Distribution HalfSphereDistribution::normal01{};
+Normal01Distribution CosineDistribution::normal01{};
+Uniform01Distribution BoxDistribution::uniform{};
+Normal01Distribution EllipsoidDistribution::normal{};
+Uniform01Distribution MixDistribution::uniform{};
 
 ///////////////////
 //    UNIFORM    //
@@ -36,7 +41,10 @@ float Normal01Distribution::sample() {
 glm::vec3 Normal01Distribution::sample(glm::vec3 x, glm::vec3 n) {
     (void) x;
     (void) n;
-    return glm::normalize(glm::vec3{normal(rnd), normal(rnd), normal(rnd)});
+    float flip1 = normal(rnd);
+    float flip2 = normal(rnd);
+    float flip3 = normal(rnd);
+    return glm::normalize(glm::vec3{flip1, flip2, flip3});
 }
 
 float Normal01Distribution::pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
@@ -82,6 +90,9 @@ glm::vec3 CosineDistribution::sample(glm::vec3 x, glm::vec3 n) {
 
     if (glm::dot(dir, n) <= eps) {
         return n;
+    }
+    if (glm::length(dir) <= 1e-4) {
+        return n; // ?!? ?!?!?! ?!? ?!?!?!?? !?!? ?!? ?!?!??! ?!!?
     }
     assert(glm::length(dir) > 1e-4);
 
@@ -164,7 +175,7 @@ here_we_go_again:
         pnt.z = side * s_z;
     }
 
-    Point on_box = transform(glm::conjugate(box_->rotator), pnt) + box_->pos;
+    Point on_box = rotate(box_->rotator, pnt) + box_->pos;
 
     glm::vec3 sample_ = glm::normalize(on_box - x);
     bool valid_generator = box_->Intersect(Ray{x, sample_}).has_value();
@@ -232,7 +243,7 @@ here_we_go_again:
 
     Point pnt = r * k;
 
-    Point on_ellipsoid = transform(glm::conjugate(ellipsoid_->rotator), pnt) + ellipsoid_->pos;
+    Point on_ellipsoid = rotate(ellipsoid_->rotator, pnt) + ellipsoid_->pos;
 
     glm::vec3 sample_ = glm::normalize(on_ellipsoid - x);
     bool valid_generator = ellipsoid_->Intersect(Ray{x, sample_}).has_value();
@@ -246,7 +257,7 @@ here_we_go_again:
 
 float EllipsoidDistribution::pdfPoint(float dist2, glm::vec3 y, glm::vec3 n_, glm::vec3 d) const {
     glm::vec3 r = ellipsoid_->dop_data;
-    glm::vec3 n = transform(ellipsoid_->rotator, y - ellipsoid_->pos) / r;
+    glm::vec3 n = rotate(glm::conjugate(ellipsoid_->rotator), y - ellipsoid_->pos) / r;
     float p_y = 1. / (4 * kPI * glm::length(glm::vec3{n.x * r.y * r.z, r.x * n.y * r.z, r.x * r.y * n.z}));
     return p_y * dist2 / fabs(glm::dot(d, n_));
 }
@@ -284,10 +295,11 @@ MixDistribution::MixDistribution(std::vector<std::unique_ptr<Distribution>>&& di
 glm::vec3 MixDistribution::sample(glm::vec3 x, glm::vec3 n) {
     (void) n;
 
-    if (distribs_.empty() || uniform.sample() <= 0.5f) {
+    float flip =uniform.sample();
+    if (distribs_.empty() || flip <= 0.5f) {
         return cosine_distrib.sample(x, n);
     }
-    
+
     float fid = uniform.sample(); // float [0,1]
     size_t id = std::floor(fid * distribs_.size()); // int [0,size-1]
 

@@ -4,20 +4,20 @@ Primitive::Primitive(PRIMITIVE_TYPE primitive_type): primitive_type(primitive_ty
 Primitive::Primitive(PRIMITIVE_TYPE primitive_type, const Point& dop_data): primitive_type(primitive_type), dop_data(dop_data) {}
 
 std::optional<intersection_t> Primitive::Intersect(const Ray &r) const {
-    Ray transformed = transform(rotator, (r + -1*pos));
+    Ray rotated = rotate(glm::conjugate(rotator), (r + -1*pos));
     
     std::optional<intersection_t> isec = std::nullopt;
     switch (primitive_type) {
         case PRIMITIVE_TYPE::PLANE: {
-            isec = intersectPlane(transformed);
+            isec = intersectPlane(rotated);
             break;
         }
         case PRIMITIVE_TYPE::BOX: {
-            isec = intersectBox(transformed);
+            isec = intersectBox(rotated);
             break;
         }
         case PRIMITIVE_TYPE::ELLIPSOID: {
-            isec = intersectEllipsoid(transformed);
+            isec = intersectEllipsoid(rotated);
             break;
         }
         
@@ -30,7 +30,10 @@ std::optional<intersection_t> Primitive::Intersect(const Ray &r) const {
     
     if (isec.has_value()) {
         auto [t, normal, interior] = isec.value();
-        normal = transform(glm::conjugate(rotator), normal);
+        normal = rotate(rotator, normal);
+
+        assert(glm::length(normal) < 1 + 1e-5);
+        
         return intersection_t{t, normal, interior};
     }
     return {};
@@ -87,7 +90,6 @@ std::optional<intersection_t> Primitive::intersectBox(const Ray &r) const {
             if (interior) {
                 normal = -1. * normal;
             }
-            normal = glm::normalize(normal);
             
             float mx = std::max({fabs(normal.x), fabs(normal.y), fabs(normal.z)});
             if (fabs(normal.x) != mx) {
@@ -100,6 +102,7 @@ std::optional<intersection_t> Primitive::intersectBox(const Ray &r) const {
                 normal.z = 0;
             }
             
+            normal = glm::normalize(normal);
             return intersection_t {t, normal, interior};
         }
     }

@@ -17,7 +17,7 @@ class Distribution {
 protected:
     static std::minstd_rand rnd;
 public:
-    Distribution() {};
+    Distribution() { rnd.seed(123); };
 
     virtual glm::vec3 sample(glm::vec3 x, glm::vec3 n) = 0;
     virtual float pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const = 0;
@@ -38,7 +38,7 @@ public:
 
 class Normal01Distribution : public Distribution  {
 private:
-    static std::uniform_real_distribution<float> normal;
+    static std::normal_distribution<float> normal;
 public:
     Normal01Distribution () {};
 
@@ -50,7 +50,7 @@ public:
 
 class HalfSphereDistribution : public Distribution  {
 private:
-    Normal01Distribution normal01;
+    static Normal01Distribution normal01;
     static std::uniform_real_distribution<float> normal;
 public:
     HalfSphereDistribution () {};
@@ -63,7 +63,7 @@ public:
 class CosineDistribution : public Distribution  {
 private:
     static constexpr float eps = 1e-8;
-    Normal01Distribution normal01;
+    static Normal01Distribution normal01;
     static std::uniform_real_distribution<float> normal;
 public:
     CosineDistribution () {};
@@ -78,7 +78,7 @@ private:
     static constexpr float eps = 1e-3;
 
     const Primitive* box_;
-    Uniform01Distribution uniform;
+    static Uniform01Distribution uniform;
 
     float pdfPoint(float dist2, glm::vec3 y, glm::vec3 n, glm::vec3 d) const;
 public:
@@ -94,7 +94,7 @@ private:
     static constexpr float eps = 1e-3;
 
     const Primitive* ellipsoid_;
-    Normal01Distribution normal;
+    static Normal01Distribution normal;
 
     float pdfPoint(float dist2, glm::vec3 y, glm::vec3 n, glm::vec3 d) const;
 public:
@@ -109,7 +109,7 @@ class MixDistribution : public Distribution {
 private:
     std::vector<std::unique_ptr<Distribution>> distribs_;
     CosineDistribution cosine_distrib;
-    Uniform01Distribution uniform;
+    static Uniform01Distribution uniform;
 
 public:
     MixDistribution(std::vector<std::unique_ptr<Distribution>>&& distribs);

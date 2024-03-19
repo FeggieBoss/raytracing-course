@@ -2,13 +2,12 @@
 #include <math.h>
 
 
-Point transform(const Quaternion& q, const Point& x) {
-    Quaternion res = (q * Quaternion(0.f, x) * glm::conjugate(q));
-    return {res.x, res.y, res.z};
+Point rotate(const Quaternion& q, const Point& x) {
+    return q * x;
 }
 
-Ray transform(const Quaternion &q, const Ray& r) {
-    return {transform(q,r.o), transform(q,r.d)};
+Ray rotate(const Quaternion &q, const Ray& r) {
+    return {q * r.o, q * r.d};
 } 
 
 

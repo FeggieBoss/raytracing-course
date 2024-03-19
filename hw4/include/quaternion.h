@@ -6,10 +6,10 @@
 #include <istream>
 #include <glm/gtc/quaternion.hpp>
 
-#define Quaternion glm::dquat
+#define Quaternion glm::quat
 
-Point transform(const Quaternion& q, const Point& x);
-Ray transform(const Quaternion &q, const Ray& r);
+Point rotate(const Quaternion& q, const Point& x);
+Ray rotate(const Quaternion &q, const Ray& r);
 
 std::istream &operator>>(std::istream &in, Quaternion &q);
 
