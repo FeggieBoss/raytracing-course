@@ -17,19 +17,19 @@ std::optional<intersection_t> Primitive::Intersect(const Ray &ray) const {
     std::optional<intersection_t> isec = std::nullopt;
     switch (primitive_type) {
         case PRIMITIVE_TYPE::PLANE: {
-            isec = intersectPlane(rotated, dop_data);
+            isec = IntersectPlane(rotated, dop_data);
             break;
         }
         case PRIMITIVE_TYPE::BOX: {
-            isec = intersectBox(rotated, dop_data);
+            isec = IntersectBox(rotated, dop_data);
             break;
         }
         case PRIMITIVE_TYPE::ELLIPSOID: {
-            isec = intersectEllipsoid(rotated, dop_data);
+            isec = IntersectEllipsoid(rotated, dop_data);
             break;
         }
         case PRIMITIVE_TYPE::TRIANGLE: {
-            isec = intersectTriangle(rotated, dop_data, dop_data1, dop_data2);
+            isec = IntersectTriangle(rotated, dop_data, dop_data1, dop_data2);
             break;
         }
 
@@ -52,7 +52,7 @@ std::optional<intersection_t> Primitive::Intersect(const Ray &ray) const {
 }
 
 // PLANE
-std::optional<intersection_t> Primitive::intersectPlane(const Ray &ray, const glm::vec3& n) const {
+std::optional<intersection_t> Primitive::IntersectPlane(const Ray &ray, const glm::vec3& n) {
     float t = -glm::dot(ray.o, n) / glm::dot(ray.d, n);
     if (t > 1e5) {
         return {};
@@ -67,7 +67,7 @@ std::optional<intersection_t> Primitive::intersectPlane(const Ray &ray, const gl
 
 
 // BOX
-std::optional<intersection_t> Primitive::intersectBox(const Ray &ray, const glm::vec3& s) const {
+std::optional<intersection_t> Primitive::IntersectBox(const Ray &ray, const glm::vec3& s) {
     Point t1xyz = (-1.f * s - ray.o) / ray.d;
     Point t2xyz = (       s - ray.o) / ray.d;
 
@@ -117,7 +117,7 @@ std::optional<intersection_t> Primitive::intersectBox(const Ray &ray, const glm:
 }
 
 // Ellipsoid
-std::optional<intersection_t> Primitive::intersectEllipsoid(const Ray &ray, const glm::vec3& r) const {
+std::optional<intersection_t> Primitive::IntersectEllipsoid(const Ray &ray, const glm::vec3& r) {
     float a = glm::dot(ray.d / r, ray.d / r);
     float b = 2 * glm::dot(ray.o / r, ray.d / r);
     float c = glm::dot(ray.o / r, ray.o / r) - 1;
@@ -152,9 +152,9 @@ std::optional<intersection_t> Primitive::intersectEllipsoid(const Ray &ray, cons
 }
 
 // Triangle
-std::optional<intersection_t> Primitive::intersectTriangle(const Ray &ray, const glm::vec3& a, const glm::vec3& b, const glm::vec3& c) const {
+std::optional<intersection_t> Primitive::IntersectTriangle(const Ray &ray, const glm::vec3& a, const glm::vec3& b, const glm::vec3& c) {
     glm::vec3 n = glm::normalize(glm::cross(b - a, c - a));
-    std::optional<intersection_t> isec = intersectPlane(ray, n);
+    std::optional<intersection_t> isec = IntersectPlane(ray, n);
 
     if (!isec.has_value()) {
         return {};

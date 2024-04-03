@@ -1,7 +1,6 @@
 #ifndef DEFINE_PRIMITIVES_H
 #define DEFINE_PRIMITIVES_H
 
-#include "point.h"
 #include "color.h"
 #include "quaternion.h"
 #include "materials.h"
@@ -24,14 +23,18 @@ struct intersection_t {
     bool interior;
 };
 
-class Primitive {
-private:
-    std::optional<intersection_t> intersectPlane(const Ray &ray, const glm::vec3& n) const;
-    std::optional<intersection_t> intersectBox(const Ray &ray, const glm::vec3& s) const;
-    std::optional<intersection_t> intersectEllipsoid(const Ray &ray, const glm::vec3& r) const;
-    std::optional<intersection_t> intersectTriangle(const Ray &ray, const glm::vec3& a, const glm::vec3& b, const glm::vec3& c) const;
+struct ray_intersection_t {
+    intersection_t isec;
+    int id;
+};
 
-public:
+class Primitive {
+public:    
+    static std::optional<intersection_t> IntersectPlane(const Ray &ray, const glm::vec3& n);
+    static std::optional<intersection_t> IntersectBox(const Ray &ray, const glm::vec3& s);
+    static std::optional<intersection_t> IntersectEllipsoid(const Ray &ray, const glm::vec3& r);
+    static std::optional<intersection_t> IntersectTriangle(const Ray &ray, const glm::vec3& a, const glm::vec3& b, const glm::vec3& c);
+
     PRIMITIVE_TYPE primitive_type;
 
     Color col, emission;
@@ -51,6 +54,7 @@ public:
     // Triangle - b, c
     Point dop_data1, dop_data2;
 
+    Primitive() {};
     Primitive(PRIMITIVE_TYPE primitive_type);
     Primitive(PRIMITIVE_TYPE primitive_type, const Point& dop_data);
     Primitive(PRIMITIVE_TYPE triangle_type, const Point& a, const Point& b, const Point& c);

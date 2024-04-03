@@ -1,213 +1,50 @@
 #include "scene.h"
 
-#include <cassert>
-#include <cmath>
-#include <iostream>
-#include <fstream>
-
-unsigned int get_command(const std::string& command) {
-    if (command == "")                      return COMMAND_EMPTY;
-    if (command == "DIMENSIONS")            return COMMAND_DIMENSIONS;
-    if (command == "BG_COLOR")              return COMMAND_BG_COLOR;
-    if (command == "CAMERA_POSITION")       return COMMAND_CAMERA_POSITION;
-    if (command == "CAMERA_RIGHT")          return COMMAND_CAMERA_RIGHT;
-    if (command == "CAMERA_UP")             return COMMAND_CAMERA_UP;
-    if (command == "CAMERA_FORWARD")        return COMMAND_CAMERA_FORWARD;
-    if (command == "CAMERA_FOV_X")          return COMMAND_CAMERA_FOV_X;
-    if (command == "NEW_PRIMITIVE")         return COMMAND_NEW_PRIMITIVE;
-    if (command == "PLANE")                 return COMMAND_PLANE;
-    if (command == "ELLIPSOID")             return COMMAND_ELLIPSOID;
-    if (command == "BOX")                   return COMMAND_BOX;
-    if (command == "POSITION")              return COMMAND_POSITION;
-    if (command == "ROTATION")              return COMMAND_ROTATION;
-    if (command == "COLOR")                 return COMMAND_COLOR;
-    if (command == "RAY_DEPTH")             return COMMAND_RAY_DEPTH;
-    if (command == "METALLIC")              return COMMAND_METALLIC;
-    if (command == "DIELECTRIC")            return COMMAND_DIELECTRIC;
-    if (command == "IOR")                   return COMMAND_IOR;
-    if (command == "SAMPLES")               return COMMAND_SAMPLES;
-    if (command == "EMISSION")              return COMMAND_EMISSION;
-    if (command == "TRIANGLE")              return COMMAND_TRIANGLE;
-
-    return -1;
-}
+Uniform01Distribution Scene::uniform;
 
 Camera::Camera(float fov_x) : fov_x(fov_x) {}
+
+void Scene::InitScene() {
+    InitDistribution();
+    InitBVH();
+}
+
+/////////
+// BVH //
+/////////
+
+void Scene::InitBVH() {
+    uint32_t n = std::partition(primitives.begin(), primitives.end(), [](const Primitive &prim) {
+        return prim.primitive_type != PRIMITIVE_TYPE::PLANE;
+    }) - primitives.begin();
+    scene_bvh = BVH_t(primitives, n);
+}
 
 ///////////////////
 // DISTRIBUTION  //
 ///////////////////
 
-void Scene::LoadDistribution() {
+void Scene::InitDistribution() {
     std::vector<std::unique_ptr<Distribution>> prim_distribs;
-    for (const std::unique_ptr<Primitive>& prim: primitives) {
-        if (!(prim->emission.r() > 0 || prim->emission.g() > 0 || prim->emission.b() > 0)) {
+    for (const Primitive& prim: primitives) {
+        if (!(prim.emission.r() > 0 || prim.emission.g() > 0 || prim.emission.b() > 0)) {
             continue;
         }
-        if (prim->primitive_type == PRIMITIVE_TYPE::BOX) {
+        if (prim.primitive_type == PRIMITIVE_TYPE::BOX) {
             prim_distribs.emplace_back(
                 std::unique_ptr<Distribution>(
-                    new BoxDistribution(prim.get())
+                    new BoxDistribution(&prim)
                 )
             );
-        } else if (prim->primitive_type == PRIMITIVE_TYPE::ELLIPSOID) {
+        } else if (prim.primitive_type == PRIMITIVE_TYPE::ELLIPSOID) {
             prim_distribs.emplace_back(
                 std::unique_ptr<Distribution>(
-                    new EllipsoidDistribution(prim.get())
+                    new EllipsoidDistribution(&prim)
                 )
             );
         }
     }
     mix_distrib = std::unique_ptr<MixDistribution>(new MixDistribution(std::move(prim_distribs)));
-}
-
-///////////////////
-// SCENE LOADING //
-///////////////////
-
-Uniform01Distribution Scene::uniform = Uniform01Distribution();
-
-std::pair<std::unique_ptr<Primitive>, std::string> LoadPrimitive(std::istream &in) {
-    std::unique_ptr<Primitive> primitive;
-
-    std::string cmds;
-    while (getline(in, cmds)) {
-        std::stringstream ss;
-        ss << cmds;
-        std::string cmd_name;
-        ss >> cmd_name;
-
-        auto cmd = get_command(cmd_name);
-        if(cmd==COMMAND_EMPTY) break;
-
-        switch (cmd) {
-            case COMMAND_ELLIPSOID: {
-                Point r;
-                ss >> r;
-                primitive = std::unique_ptr<Primitive>(new Primitive(PRIMITIVE_TYPE::ELLIPSOID, r));
-                break;
-            }
-            case COMMAND_PLANE: {
-                Point n;
-                ss >> n;
-                primitive = std::unique_ptr<Primitive>(new Primitive(PRIMITIVE_TYPE::PLANE, n));
-                break;
-            }
-            case COMMAND_BOX: {
-                Point s;
-                ss >> s;
-                primitive = std::unique_ptr<Primitive>(new Primitive(PRIMITIVE_TYPE::BOX, s));
-                break;
-            }
-            case COMMAND_TRIANGLE: {
-                Point a, b, c;
-                ss >> a >> b >> c;
-                primitive = std::unique_ptr<Primitive>(new Primitive(PRIMITIVE_TYPE::TRIANGLE, a, b, c));
-                break;
-            }
-            case COMMAND_COLOR: {
-                ss >> primitive->col;
-                break;
-            }
-            case COMMAND_POSITION: {
-                ss >> primitive->pos;
-                break;
-            }
-            case COMMAND_ROTATION: {
-                ss >> primitive->rotator;
-                break;
-            }            
-            case COMMAND_METALLIC: {
-                primitive->material = Material::METALLIC;
-                break;
-            }            
-            case COMMAND_DIELECTRIC: {
-                primitive->material = Material::DIELECTRIC;
-                break;
-            }            
-            case COMMAND_IOR: {
-                ss >> primitive->ior;
-                break;
-            }            
-            case COMMAND_EMISSION: {
-                ss >> primitive->emission;
-                break;
-            }            
-            
-            default: {
-                std::cerr << "unexpected primitive(" << cmd_name << ")" << std::endl;
-                return std::make_pair(std::move(primitive), cmd_name);
-            }
-        }
-    }
- 
-    return std::make_pair(std::move(primitive), "");
-}
-
-void Scene::Load(std::istream &in) {
-    std::string cmds;
-    while (getline(in, cmds)) {
-        std::stringstream ss;
-        ss << cmds;
-        std::string cmd_name;
-        ss >> cmd_name;
-
-    pasrse_command_again:
-        auto cmd = get_command(cmd_name);
-        if(cmd==COMMAND_EMPTY) continue;
-
-        switch (cmd) {
-            case COMMAND_DIMENSIONS: {
-                ss >> cam.width >> cam.height;
-                break;
-            }
-            case COMMAND_BG_COLOR: {
-                ss >> background;
-                break;
-            }
-            case COMMAND_CAMERA_POSITION: {
-                ss >> cam.pos;
-                break;
-            }
-            case COMMAND_CAMERA_RIGHT: {
-                ss >> cam.right;
-                break;
-            }
-            case COMMAND_CAMERA_UP: {
-                ss >> cam.up;
-                break;
-            }
-            case COMMAND_CAMERA_FORWARD: { 
-                ss >> cam.forward;
-                break;
-            }
-            case COMMAND_CAMERA_FOV_X: {
-                ss >> cam.fov_x;
-                break;
-            }
-            case COMMAND_NEW_PRIMITIVE: {
-                auto [primitive, rest_cmd] = LoadPrimitive(in);
-                primitives.push_back(std::move(primitive));
-                cmd_name = rest_cmd;
-                if(!cmd_name.empty()) {
-                    goto pasrse_command_again;
-                }
-                break;
-            }
-            case COMMAND_RAY_DEPTH: {
-                ss >> ray_depth;
-                break;
-            }
-            case COMMAND_SAMPLES: {
-                ss >> samples;
-                break;
-            }
-            default: {
-                std::cerr << "unexpected command(" << cmd_name << ")" << std::endl;
-                break;
-            }
-        }
-    }
 }
 
 /////////////////////
@@ -218,10 +55,14 @@ ray_intersection_t Scene::RayIntersection(const Ray &ray) const {
     ray_intersection_t ret;
     ret.id = -1;
 
-    float closest_dist = 2e9;
+    float closest_dist = INF;
     int cur_id = 0;
     for (auto &primitive : primitives) {
-        auto intersection = primitive->Intersect(ray);
+        if (primitive.primitive_type != PRIMITIVE_TYPE::PLANE) {
+            ++cur_id;
+            continue;
+        }
+        auto intersection = primitive.Intersect(ray);
         if (intersection.has_value()) {
             auto [t, _, __] = intersection.value();
             if (t < closest_dist) {
@@ -231,6 +72,15 @@ ray_intersection_t Scene::RayIntersection(const Ray &ray) const {
         }
         ++cur_id;
     }
+
+    ray_intersection_t ray_isec = scene_bvh.Intersect(primitives, ray, closest_dist);
+    if (ray_isec.id != -1) {
+        auto [t, _, __] = ray_isec.isec;
+        if (t < closest_dist) {
+            ret = ray_isec;
+        }
+    }
+    
     return ret;
 }
 
@@ -253,7 +103,7 @@ Color Scene::RayTrace(const Ray& ray, size_t ost_raydepth) {
     Point p = ray.o + t * ray.d;
     
     Color other_color(0.f, 0.f, 0.f);
-    switch (primitives[id]->material)
+    switch (primitives[id].material)
     {
     case Material::DIFFUSE: {
         // L = E + 2*C*L_in(w)*dot(w,n)
@@ -270,7 +120,7 @@ Color Scene::RayTrace(const Ray& ray, size_t ost_raydepth) {
 
         float pw = mix_distrib->pdf(p_outer, normal, rand_dir);
         glm::vec3 L_in = RayTrace(Ray({p + eps * rand_dir, rand_dir}), ost_raydepth-1).rgb;
-        glm::vec3 C = primitives[id]->col.rgb;
+        glm::vec3 C = primitives[id].col.rgb;
         other_color = {(C / kPI) * L_in * glm::dot(rand_dir, normal) * (1 / pw)};
         break;
     }
@@ -279,14 +129,14 @@ Color Scene::RayTrace(const Ray& ray, size_t ost_raydepth) {
 
         glm::vec3 reflect_dir = GetReflection(normal, glm::normalize(ray.d));
         Color reflected_color = RayTrace({p + eps * reflect_dir, reflect_dir}, ost_raydepth-1);     
-        other_color = {primitives[id]->col.rgb * reflected_color.rgb};
+        other_color = {primitives[id].col.rgb * reflected_color.rgb};
         break;
     }
     case Material::DIELECTRIC: {
         // sin(theta2) > 1 or coin flip < r => reflected
         // otherwise => refracted
 
-        float eta1 = 1., eta2 = primitives[id]->ior;
+        float eta1 = 1., eta2 = primitives[id].ior;
         if (interior) {
             std::swap(eta1, eta2);
         }
@@ -318,7 +168,7 @@ Color Scene::RayTrace(const Ray& ray, size_t ost_raydepth) {
         Ray refracted = Ray(p + eps * refracted_dir, refracted_dir);
         Color refracted_color = RayTrace(refracted, ost_raydepth - 1);
         if (!interior) {
-            refracted_color = { primitives[id]->col.rgb * refracted_color.rgb };
+            refracted_color = { primitives[id].col.rgb * refracted_color.rgb };
         }
         other_color = refracted_color;
         break;
@@ -328,7 +178,7 @@ Color Scene::RayTrace(const Ray& ray, size_t ost_raydepth) {
         break;
     }
 
-    Color summary_color = {primitives[id]->emission.rgb + other_color.rgb};
+    Color summary_color = {primitives[id].emission.rgb + other_color.rgb};
     return summary_color;
 }
 
@@ -360,6 +210,7 @@ void Scene::Render(std::ostream &out) {
     out << cam.width << " " << cam.height << "\n";
     out << 255 << "\n";
 
+    // #pragma omp parallel for schedule(dynamic,8)
     for (unsigned int y = 0; y < cam.height; ++y) {
         for (unsigned int x = 0; x < cam.width; ++x) {
             Color color = Sample(x, y);

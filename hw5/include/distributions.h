@@ -1,7 +1,6 @@
 #ifndef DEFINE_DISTRIBUTIONS_H
 #define DEFINE_DISTRIBUTIONS_H
 
-#include "point.h"
 #include "primitives.h"
 
 #define GLM_ENABLE_EXPERIMENTAL
@@ -17,7 +16,7 @@ class Distribution {
 protected:
     static std::minstd_rand rnd;
 public:
-    Distribution() { rnd.seed(123); };
+    Distribution() {};
 
     virtual glm::vec3 sample(glm::vec3 x, glm::vec3 n) = 0;
     virtual float pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const = 0;
@@ -51,7 +50,6 @@ public:
 class HalfSphereDistribution : public Distribution  {
 private:
     static Normal01Distribution normal01;
-    static std::uniform_real_distribution<float> normal;
 public:
     HalfSphereDistribution () {};
 
@@ -64,7 +62,6 @@ class CosineDistribution : public Distribution  {
 private:
     static constexpr float eps = 1e-8;
     static Normal01Distribution normal01;
-    static std::uniform_real_distribution<float> normal;
 public:
     CosineDistribution () {};
     

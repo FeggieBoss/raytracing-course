@@ -11,7 +11,7 @@ int main(int argc, const char *argv[]) {
 
     Scene scene;
     scene.Load(in);
-    scene.LoadDistribution();
+    scene.InitScene();
     scene.Render(out);
 
     return 0;

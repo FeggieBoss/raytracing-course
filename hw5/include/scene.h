@@ -1,11 +1,13 @@
 #ifndef DEFINE_SCENE_H
 #define DEFINE_SCENE_H
 
-#include "color.h"
-#include "point.h"
-#include "primitives.h"
 #include "distributions.h"
+#include "bvh.h"
 
+#include <cmath>
+#include <cassert>
+#include <iostream>
+#include <fstream>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -48,19 +50,18 @@ struct Camera {
     Ray GetToRay(float x, float y) const;
 };
 
-struct ray_intersection_t {
-    intersection_t isec;
-    int id;
-};
-
 class Scene {
 private:
     static constexpr float eps = 1e-4;
     static Uniform01Distribution uniform;
+    BVH_t scene_bvh;
 
     ray_intersection_t RayIntersection(const Ray& ray) const;
     Color Sample(unsigned int x, unsigned int y);
     Color RayTrace(const Ray& ray, size_t ost_raydepth);
+
+    void InitDistribution();
+    void InitBVH();
 public:
     unsigned int ray_depth;
     unsigned int samples;
@@ -68,12 +69,13 @@ public:
     Color background;
     Camera cam;
     std::unique_ptr<MixDistribution> mix_distrib;
-    std::vector<std::unique_ptr<Primitive>> primitives;
+    std::vector<Primitive> primitives;
 
     Scene() {};
 
     void Load(std::istream &in);
-    void LoadDistribution();
+    // have to be called after Load()
+    void InitScene();
     void Render(std::ostream &out);
 };
 
