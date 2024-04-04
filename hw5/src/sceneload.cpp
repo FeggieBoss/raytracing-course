@@ -83,11 +83,11 @@ std::pair<Primitive, std::string> LoadPrimitive(std::istream &in) {
                 break;
             }            
             case COMMAND_METALLIC: {
-                primitive.material = Material::METALLIC;
+                primitive.material = MATERIAL::METALLIC;
                 break;
             }            
             case COMMAND_DIELECTRIC: {
-                primitive.material = Material::DIELECTRIC;
+                primitive.material = MATERIAL::DIELECTRIC;
                 break;
             }            
             case COMMAND_IOR: {
@@ -100,7 +100,7 @@ std::pair<Primitive, std::string> LoadPrimitive(std::istream &in) {
             }            
             
             default: {
-                std::cerr << "unexpected primitive(" << cmd_name << ")" << std::endl;
+                // std::cerr << "unexpected primitive(" << cmd_name << ")" << std::endl;
                 return std::make_pair(std::move(primitive), cmd_name);
             }
         }

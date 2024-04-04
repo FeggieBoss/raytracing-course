@@ -25,26 +25,18 @@ void Scene::InitBVH() {
 ///////////////////
 
 void Scene::InitDistribution() {
-    std::vector<std::unique_ptr<Distribution>> prim_distribs;
+    std::vector<Distribution> prim_distribs;
     for (const Primitive& prim: primitives) {
         if (!(prim.emission.r() > 0 || prim.emission.g() > 0 || prim.emission.b() > 0)) {
             continue;
         }
         if (prim.primitive_type == PRIMITIVE_TYPE::BOX) {
-            prim_distribs.emplace_back(
-                std::unique_ptr<Distribution>(
-                    new BoxDistribution(&prim)
-                )
-            );
+            prim_distribs.emplace_back(std::move(Distribution(DISTRIB_TYPE::BOX, &prim)));
         } else if (prim.primitive_type == PRIMITIVE_TYPE::ELLIPSOID) {
-            prim_distribs.emplace_back(
-                std::unique_ptr<Distribution>(
-                    new EllipsoidDistribution(&prim)
-                )
-            );
+            prim_distribs.emplace_back(std::move(Distribution(DISTRIB_TYPE::ELLIPSOID, &prim)));
         }
     }
-    mix_distrib = std::unique_ptr<MixDistribution>(new MixDistribution(std::move(prim_distribs)));
+    mix_distrib = Distribution(DISTRIB_TYPE::MIX, std::move(prim_distribs));
 }
 
 /////////////////////
@@ -89,7 +81,7 @@ static Point GetReflection(const Point& normal, const Point& dir) {
 }
 
 Color Scene::RayTrace(RANDOM_t& random, const Ray& ray, size_t ost_raydepth) {
-    auto& uniform01 = random.uniform01;
+    std::uniform_real_distribution<float>& uniform01 = random.uniform01.get();
     auto& rnd = random.rnd;
 
     if (ost_raydepth == 0) {
@@ -108,26 +100,26 @@ Color Scene::RayTrace(RANDOM_t& random, const Ray& ray, size_t ost_raydepth) {
     Color other_color(0.f, 0.f, 0.f);
     switch (primitives[id].material)
     {
-    case Material::DIFFUSE: {
+    case MATERIAL::DIFFUSE: {
         // L = E + 2*C*L_in(w)*dot(w,n)
         
         // moving from surface a lil bit
         glm::vec3 p_outer = p + eps * normal;
         // генерируем случайное направление при помощи mix_distribution
-        glm::vec3 rand_dir = mix_distrib->sample(random, p_outer, normal);
+        glm::vec3 rand_dir = mix_distrib.Sample(random, p_outer, normal);
 
         // если не в той полусфере, то не учитываем дополнительный свет
         if (glm::dot(rand_dir,normal) <= 0) {
             break;
         }
 
-        float pw = mix_distrib->pdf(p_outer, normal, rand_dir);
+        float pw = mix_distrib.Pdf(p_outer, normal, rand_dir);
         glm::vec3 L_in = RayTrace(random, Ray({p + eps * rand_dir, rand_dir}), ost_raydepth-1).rgb;
         glm::vec3 C = primitives[id].col.rgb;
         other_color = {(C / kPI) * L_in * glm::dot(rand_dir, normal) * (1 / pw)};
         break;
     }
-    case Material::METALLIC: {   
+    case MATERIAL::METALLIC: {   
         // L = E + C*L_in(R_n(w))
 
         glm::vec3 reflect_dir = GetReflection(normal, glm::normalize(ray.d));
@@ -135,7 +127,7 @@ Color Scene::RayTrace(RANDOM_t& random, const Ray& ray, size_t ost_raydepth) {
         other_color = {primitives[id].col.rgb * reflected_color.rgb};
         break;
     }
-    case Material::DIELECTRIC: {
+    case MATERIAL::DIELECTRIC: {
         // sin(theta2) > 1 or coin flip < r => reflected
         // otherwise => refracted
 
@@ -159,7 +151,7 @@ Color Scene::RayTrace(RANDOM_t& random, const Ray& ray, size_t ost_raydepth) {
         float r = r0 + (1 - r0) * pow(1 - dot_normal_dir, 5.);
 
         // с шансом r вернем отражённый / 1-r соответственно преломлённый
-        if (uniform01.sample(rnd) < r) {
+        if (uniform01(rnd) < r) {
             glm::vec3 reflect_dir = GetReflection(normal, glm::normalize(ray.d));
             Color reflected_color = RayTrace(random, {p + eps * reflect_dir, reflect_dir}, ost_raydepth-1);
             other_color = reflected_color;
@@ -196,15 +188,15 @@ Ray Camera::GetToRay(float x, float y) const {
 }
 
 Color Scene::Sample(RANDOM_t& random, unsigned int x, unsigned int y) {
-    auto& uniform01 = random.uniform01;
+    std::uniform_real_distribution<float>& uniform01 = random.uniform01.get();
     auto& rnd = random.rnd;
 
     Color summary(0.f, 0.f, 0.f);
 
     for(unsigned int i = 0; i < samples; ++i) {
         // сглаживаем
-        float fx = x + uniform01.sample(rnd);
-        float fy = y + uniform01.sample(rnd);
+        float fx = x + uniform01(rnd);
+        float fy = y + uniform01(rnd);
         summary = {summary.rgb + RayTrace(random, cam.GetToRay(fx, fy), ray_depth).rgb};
     }
     Color mean = {1.f / samples * summary.rgb };
@@ -222,17 +214,21 @@ void Scene::Render(std::ostream &out) {
     #pragma omp parallel for schedule(dynamic)
     for (unsigned int y = 0; y < cam.height; ++y) {
         std::minstd_rand rnd(y);
-        Uniform01Distribution uniform01{};
-        Normal01Distribution normal01{};
-        RANDOM_t random{rnd, uniform01, normal01};
+        std::uniform_real_distribution<float> uniform01{0.f, 1.f};
+        std::normal_distribution<float> normal01{0.f, 1.f};
+        RANDOM_t random{
+            rnd, 
+            uniform01, 
+            normal01
+        };
         for (unsigned int x = 0; x < cam.width; ++x) {
-
             Color color = Sample(random, x, y);
             color = AcesTonemap(color);
             color = GammaCorrected(color);
 
             pixels[y][x] = color.rgb;
         }
+        std::cout << "done column y = " << y << std::endl;
     }
 
     for (unsigned int y = 0; y < cam.height; ++y) {

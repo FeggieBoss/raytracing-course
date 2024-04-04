@@ -40,7 +40,7 @@ public:
     Color col, emission;
     Point pos;
     Quaternion rotator = {1.,0.,0.,0.};
-    Material material = Material::DIFFUSE;
+    MATERIAL material = MATERIAL::DIFFUSE;
     float ior = 0.;
 
     /*

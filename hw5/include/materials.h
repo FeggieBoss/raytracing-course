@@ -1,7 +1,7 @@
 #ifndef DEFINE_MATERIALS_H
 #define DEFINE_MATERIALS_H
 
-enum class Material {
+enum class MATERIAL {
     DIFFUSE, METALLIC, DIELECTRIC
 };
 

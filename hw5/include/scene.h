@@ -68,7 +68,7 @@ public:
 
     Color background;
     Camera cam;
-    std::unique_ptr<MixDistribution> mix_distrib;
+    Distribution mix_distrib;
     std::vector<Primitive> primitives;
 
     Scene() {};

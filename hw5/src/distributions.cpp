@@ -1,70 +1,133 @@
 #include "distributions.h"
 
+//////////////////
+// MAIN METHODS //
+//////////////////
+
+Distribution::Distribution(const Distribution& other) {
+    distrib_type_ = other.distrib_type_;
+    data = other.data;
+}
+Distribution& Distribution::operator=(const Distribution& other) {
+    distrib_type_ = other.distrib_type_;
+    data = other.data;
+    return *this;
+}
+
+glm::vec3 Distribution::Sample(RANDOM_t& random, glm::vec3 x, glm::vec3 n) {
+    glm::vec3 ret;
+
+    switch (distrib_type_) {
+        case DISTRIB_TYPE::BOX: {
+            ret = SampleBox(random, x, n);
+            break;
+        }
+        case DISTRIB_TYPE::ELLIPSOID: {
+            ret = SampleEllipsoid(random, x, n);
+            break;
+        }
+        case DISTRIB_TYPE::MIX: {
+            ret = SampleMix(random, x, n);
+            break;
+        }
+    
+        default: {
+            throw std::invalid_argument("Distribution::sample: unexpected DISTRIB_TYPE");
+            break;
+        }
+    }
+
+    return ret;
+}
+
+float Distribution::Pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
+    float ret;
+
+    switch (distrib_type_) {
+        case DISTRIB_TYPE::BOX: {
+            ret = PdfBox(x, n, d);
+            break;
+        }
+        case DISTRIB_TYPE::ELLIPSOID: {
+            ret = PdfEllipsoid(x, n, d);
+            break;
+        }
+        case DISTRIB_TYPE::MIX: {
+            ret = PdfMix(x, n, d);
+            break;
+        }
+    
+        default: {
+            throw std::invalid_argument("Distribution::sample: unexpected DISTRIB_TYPE");
+            break;
+        }
+    }
+
+    return ret;
+}
+
 ///////////////////
-//    UNIFORM    //
+//   UNIFORM01   //
 ///////////////////
 
-float Uniform01Distribution::sample(std::minstd_rand& rnd) {
+float Distribution::SampleUniform01(RANDOM_t& random) {
+    std::uniform_real_distribution<float>& uniform = random.uniform01.get();
+    auto& rnd = random.rnd;
+
     return uniform(rnd);
 }
 
-glm::vec3 Uniform01Distribution::sample(RANDOM_t& random, glm::vec3 x, glm::vec3 n) {
+glm::vec3 Distribution::SampleUniform01Vec(RANDOM_t& random) {
+    std::uniform_real_distribution<float>& uniform = random.uniform01.get();
     auto& rnd = random.rnd;
-    
-    (void) x;
-    (void) n;
+
     return glm::normalize(glm::vec3{uniform(rnd), uniform(rnd), uniform(rnd)});
 }
 
-float Uniform01Distribution::pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
-    (void) x;
-    (void) n;
-    (void) d;
+float Distribution::PdfUniform01() const {
     return 0.f;
 }
 
 ///////////////////
-//    NORMAL     //
+//   NORMAL01    //
 ///////////////////
 
-float Normal01Distribution::sample(std::minstd_rand& rnd) {
+float Distribution::SampleNormal01(RANDOM_t& random) {
+    std::normal_distribution<float>& normal = random.normal01.get();
+    auto& rnd = random.rnd;
+
     return normal(rnd);
 }
 
-glm::vec3 Normal01Distribution::sample(RANDOM_t& random, glm::vec3 x, glm::vec3 n) {
+glm::vec3 Distribution::SampleNormal01Vec(RANDOM_t& random) {
+    std::normal_distribution<float>& normal = random.normal01.get();
     auto& rnd = random.rnd;
 
-    (void) x;
-    (void) n;
     float flip1 = normal(rnd);
     float flip2 = normal(rnd);
     float flip3 = normal(rnd);
     return glm::normalize(glm::vec3{flip1, flip2, flip3});
 }
 
-float Normal01Distribution::pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
-    (void) x;
-    (void) n;
-    (void) d;
+float Distribution::PdfNormal01() const {
     return 0.f;
 }
 
 ///////////////////
-// HALF SPHERE   //
+//  HALF SPHERE  //
 ///////////////////
 
-glm::vec3 HalfSphereDistribution::sample(RANDOM_t& random, glm::vec3 x, glm::vec3 n) {
+glm::vec3 Distribution::SampleHalfSphere(RANDOM_t& random, glm::vec3 x, glm::vec3 n) {
     (void) x;
-    auto& normal01 = random.normal01;
 
-    glm::vec3 dir = normal01.sample(random, x ,n);
+    glm::vec3 dir = SampleNormal01Vec(random);
     if (glm::dot(dir, n) < 0) {
         dir = -1 * dir;
     }
     return dir;
 }
 
-float HalfSphereDistribution::pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
+float Distribution::PdfHalfSphere(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
     (void) x;
     (void) n;
 
@@ -78,11 +141,10 @@ float HalfSphereDistribution::pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
 //    COSINE     //
 ///////////////////
 
-glm::vec3 CosineDistribution::sample(RANDOM_t& random, glm::vec3 x, glm::vec3 n) {
+glm::vec3 Distribution::SampleCosine(RANDOM_t& random, glm::vec3 x, glm::vec3 n) {
     (void) x;
-    auto& normal01 = random.normal01;
 
-    glm::vec3 dir = normal01.sample(random, x ,n);
+    glm::vec3 dir = SampleNormal01Vec(random);
     dir = dir + n;
 
     if (glm::dot(dir, n) <= eps) {
@@ -96,7 +158,7 @@ glm::vec3 CosineDistribution::sample(RANDOM_t& random, glm::vec3 x, glm::vec3 n)
     return glm::normalize(dir);
 }
 
-float CosineDistribution::pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
+float Distribution::PdfCosine(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
     (void) x;
     return std::max(0.f, 1.f / kPI * glm::dot(d, n));
 }
@@ -139,12 +201,32 @@ static std::pair<std::optional<intersection_t>, std::optional<intersection_t>> G
 //     BOX       //
 ///////////////////
 
-BoxDistribution::BoxDistribution(const Primitive* box): box_(box) {}
+// Box or Ellipsoid
+Distribution::Distribution(DISTRIB_TYPE distrib_type, const Primitive* prim) {
+    distrib_type_ = distrib_type;
+    assert(distrib_type == DISTRIB_TYPE::BOX || distrib_type == DISTRIB_TYPE::ELLIPSOID);
 
-glm::vec3 BoxDistribution::sample(RANDOM_t& random, glm::vec3 x, glm::vec3 n) {
+    switch (prim->primitive_type) {
+        case PRIMITIVE_TYPE::BOX: {
+            data.emplace<static_cast<std::size_t>(DATA_T::BOX_)>(prim);
+            assert(distrib_type == DISTRIB_TYPE::BOX);
+            break;
+        }
+        case PRIMITIVE_TYPE::ELLIPSOID: {
+            data.emplace<static_cast<std::size_t>(DATA_T::ELLIPSOID_)>(prim);
+            assert(distrib_type == DISTRIB_TYPE::ELLIPSOID);
+            break;
+        }
+        default: {
+            throw std::invalid_argument("Distribution constructor BOX/Ellipsoid: unexpected prim type");
+            break;
+        }
+    }
+}
+
+glm::vec3 Distribution::SampleBox(RANDOM_t& random, glm::vec3 x, glm::vec3 n) {
     (void) n;
-    auto& uniform01 = random.uniform01;
-    auto& rnd = random.rnd;
+    const Primitive* box_ = std::get<static_cast<std::size_t>(DATA_T::BOX_)>(data);
 
     auto s = box_->dop_data;
     
@@ -157,20 +239,20 @@ glm::vec3 BoxDistribution::sample(RANDOM_t& random, glm::vec3 x, glm::vec3 n) {
     float w_z = s_z * s_z;
 
 here_we_go_again:
-    float u = uniform01.sample(rnd);
-    float side = (uniform01.sample(rnd) <= 0.5 ? 1 : -1);
+    float u = SampleUniform01(random);
+    float side = (SampleUniform01(random) <= 0.5 ? 1 : -1);
     u *= w_x + w_y + w_z;
 
-    float c1 = uniform01.sample(rnd), c2 = uniform01.sample(rnd), c3 = uniform01.sample(rnd);
+    float c1 = SampleUniform01(random), c2 = SampleUniform01(random), c3 = SampleUniform01(random);
     c1 = 2 * c1 - 1;
     c2 = 2 * c2 - 1;
     c3 = 2 * c3 - 1;
     Point pnt = {c1 * s_x, c2 * s_y, c3 * s_z};
-    if (u < w_x) { // перпенд оси X
+    if (u < w_x) {  // перпенд оси X
         pnt.x = side * s_x;
-    } else if (u < w_x + w_y) { // перпенд оси Y
+    } else if (u < w_x + w_y) {  // перпенд оси Y
         pnt.y = side * s_y;
-    } else { // перпенд оси Z
+    } else {  // перпенд оси Z
         pnt.z = side * s_z;
     }
 
@@ -186,8 +268,9 @@ here_we_go_again:
     return sample_;
 }
 
-float BoxDistribution::pdfPoint(float dist2, glm::vec3 y, glm::vec3 n, glm::vec3 d) const {
+float Distribution::PdfPointBox(float dist2, glm::vec3 y, glm::vec3 n, glm::vec3 d) const {
     (void) y;
+    const Primitive* box_ = std::get<static_cast<std::size_t>(DATA_T::BOX_)>(data);
 
     auto s = box_->dop_data;
 
@@ -203,10 +286,11 @@ float BoxDistribution::pdfPoint(float dist2, glm::vec3 y, glm::vec3 n, glm::vec3
     return p_y * dist2 / fabs(glm::dot(d, n));
 }
 
-float BoxDistribution::pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
+float Distribution::PdfBox(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
     (void) n;
-    
-    auto [inter1, inter2] = GetPointsForPdf(reinterpret_cast<const Primitive*>(box_), x, d);
+    const Primitive* box_ = std::get<static_cast<std::size_t>(DATA_T::BOX_)>(data);
+
+    auto [inter1, inter2] = GetPointsForPdf(box_, x, d);
     if (!inter1.has_value()) {
         //std::cerr << "Box pdf no intersection" << std::endl;
         return 1e-9f;
@@ -215,13 +299,13 @@ float BoxDistribution::pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
     auto [t1, normal1, _] =  inter1.value();
     Point closestPoint = x + t1 * d;
 
-    float sum = pdfPoint(glm::distance2(closestPoint, x), closestPoint, normal1, d);
+    float sum = PdfPointBox(glm::distance2(closestPoint, x), closestPoint, normal1, d);
 
     if (inter2.has_value()) {
         auto [t2, normal2, _] = inter2.value();
         Point otherPoint = x + t2 * d;
 
-        sum += pdfPoint(glm::distance2(otherPoint, x), otherPoint, normal2, d);
+        sum += PdfPointBox(glm::distance2(otherPoint, x), otherPoint, normal2, d);
     }
 
     return sum;
@@ -231,15 +315,13 @@ float BoxDistribution::pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
 //   Ellipsoid   //
 ///////////////////
 
-EllipsoidDistribution::EllipsoidDistribution(const Primitive* ellipsoid): ellipsoid_(ellipsoid) {}
-
-glm::vec3 EllipsoidDistribution::sample(RANDOM_t& random, glm::vec3 x, glm::vec3 n) {
+glm::vec3 Distribution::SampleEllipsoid(RANDOM_t& random, glm::vec3 x, glm::vec3 n) {
     (void) n;
-    auto& normal01 = random.normal01;
+    const Primitive* ellipsoid_ = std::get<static_cast<std::size_t>(DATA_T::ELLIPSOID_)>(data);
     
     glm::vec3 r = ellipsoid_->dop_data;
 here_we_go_again:
-    glm::vec3 k = normal01.sample(random, x, n);
+    glm::vec3 k = SampleNormal01Vec(random);
 
     Point pnt = r * k;
 
@@ -255,17 +337,20 @@ here_we_go_again:
     return sample_;
 }
 
-float EllipsoidDistribution::pdfPoint(float dist2, glm::vec3 y, glm::vec3 n_, glm::vec3 d) const {
+float Distribution::PdfPointEllipsoid(float dist2, glm::vec3 y, glm::vec3 n_, glm::vec3 d) const {
+    const Primitive* ellipsoid_ = std::get<static_cast<std::size_t>(DATA_T::ELLIPSOID_)>(data);
+
     glm::vec3 r = ellipsoid_->dop_data;
     glm::vec3 n = rotate(glm::conjugate(ellipsoid_->rotator), y - ellipsoid_->pos) / r;
     float p_y = 1. / (4 * kPI * glm::length(glm::vec3{n.x * r.y * r.z, r.x * n.y * r.z, r.x * r.y * n.z}));
     return p_y * dist2 / fabs(glm::dot(d, n_));
 }
 
-float EllipsoidDistribution::pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
+float Distribution::PdfEllipsoid(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
     (void) n;
+    const Primitive* ellipsoid_ = std::get<static_cast<std::size_t>(DATA_T::ELLIPSOID_)>(data);
     
-    auto [inter1, inter2] = GetPointsForPdf(reinterpret_cast<const Primitive*>(ellipsoid_), x, d);
+    auto [inter1, inter2] = GetPointsForPdf(ellipsoid_, x, d);
     if (!inter1.has_value()) {
         //std::cerr << "Ellipsoid pdf no intersection" << std::endl;
         return 1e-9f;
@@ -274,13 +359,13 @@ float EllipsoidDistribution::pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
     auto [t1, normal1, _] =  inter1.value();
     Point closestPoint = x + t1 * d;
 
-    float sum = pdfPoint(glm::distance2(closestPoint, x), closestPoint, normal1, d);
+    float sum = PdfPointEllipsoid(glm::distance2(closestPoint, x), closestPoint, normal1, d);
 
     if (inter2.has_value()) {
         auto [t2, normal2, _] = inter2.value();
         Point otherPoint = x + t2 * d;
 
-        sum += pdfPoint(glm::distance2(otherPoint, x), otherPoint, normal2, d);
+        sum += PdfPointEllipsoid(glm::distance2(otherPoint, x), otherPoint, normal2, d);
     }
 
     return sum;
@@ -290,33 +375,38 @@ float EllipsoidDistribution::pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
 //      MIX      //
 ///////////////////
 
-MixDistribution::MixDistribution(std::vector<std::unique_ptr<Distribution>>&& distribs): distribs_(std::move(distribs)) {}
+Distribution::Distribution(DISTRIB_TYPE mix_type, std::vector<Distribution>&& distribs) {
+    distrib_type_ = DISTRIB_TYPE::MIX;
+    assert(mix_type == DISTRIB_TYPE::MIX);
 
-glm::vec3 MixDistribution::sample(RANDOM_t& random, glm::vec3 x, glm::vec3 n) {
+    data.emplace<static_cast<std::size_t>(DATA_T::DISTRIBS_)>(std::move(distribs));
+}
+
+glm::vec3 Distribution::SampleMix(RANDOM_t& random, glm::vec3 x, glm::vec3 n) {
     (void) n;
-    auto& uniform01 = random.uniform01;
-    auto& rnd = random.rnd;
+    std::vector<Distribution>& distribs_ = std::get<static_cast<std::size_t>(DATA_T::DISTRIBS_)>(data);
 
-    float flip = uniform01.sample(rnd);
+    float flip = SampleUniform01(random);
     if (distribs_.empty() || flip <= 0.5f) {
-        return cosine_distrib.sample(random, x, n);
+        return SampleCosine(random, x, n);
     }
 
-    float fid = uniform01.sample(rnd); // float [0,1]
-    size_t id = std::floor(fid * distribs_.size()); // int [0,size-1]
+    float fid = SampleUniform01(random);  // float [0,1]
+    size_t id = std::floor(fid * distribs_.size());  // int [0,size-1]
 
-    glm::vec3 sample_ = distribs_[id]->sample(random, x, n);
+    glm::vec3 sample_ = distribs_[id].Sample(random, x, n);
     return sample_;
 }
 
-float MixDistribution::pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
+float Distribution::PdfMix(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
     (void) n;
+    const std::vector<Distribution>& distribs_ = std::get<static_cast<std::size_t>(DATA_T::DISTRIBS_)>(data);
     
-    float sum = cosine_distrib.pdf(x, n, d);
+    float sum = PdfCosine(x, n, d);
     if (!distribs_.empty()) {
         float prim_sum = 0.f;
         for(const auto& distrib : distribs_) {
-            prim_sum += distrib->pdf(x, n, d);
+            prim_sum += distrib.Pdf(x, n, d);
         }
         prim_sum *= 1.f / distribs_.size();
 
