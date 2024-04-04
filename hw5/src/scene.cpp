@@ -5,8 +5,8 @@ Uniform01Distribution Scene::uniform;
 Camera::Camera(float fov_x) : fov_x(fov_x) {}
 
 void Scene::InitScene() {
-    InitDistribution();
     InitBVH();
+    InitDistribution();
 }
 
 /////////

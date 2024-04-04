@@ -17,7 +17,7 @@ add_executable(${BINARY}
         src/sceneload.cpp
         src/main.cpp)
 
-target_compile_options(${BINARY} PUBLIC -g )
+#target_compile_options(${BINARY} PUBLIC -g )
 
 add_subdirectory(glm)
 find_package(OpenMP)

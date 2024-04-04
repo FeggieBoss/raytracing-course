@@ -16,7 +16,7 @@ class Distribution {
 protected:
     static std::minstd_rand rnd;
 public:
-    Distribution() {};
+    Distribution() { rnd.seed(123); };
 
     virtual glm::vec3 sample(glm::vec3 x, glm::vec3 n) = 0;
     virtual float pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const = 0;

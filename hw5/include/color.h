@@ -7,7 +7,7 @@
 
 class Color {
 public:
-    glm::vec3 rgb;
+    glm::vec3 rgb = {0.f, 0.f, 0.f};
     Color() = default;
     Color(float r, float g, float b);   
     Color(glm::vec3 rgb);    
