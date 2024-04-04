@@ -212,8 +212,8 @@ void Scene::Render(std::ostream &out) {
 
     omp_set_num_threads(std::thread::hardware_concurrency());
     #pragma omp parallel for schedule(dynamic)
-    for (unsigned int y = 0; y < cam.height; ++y) {
-        std::minstd_rand rnd(y);
+    for (unsigned int i = 0; i < cam.height * cam.width; i++) {
+        std::minstd_rand rnd(i);
         std::uniform_real_distribution<float> uniform01{0.f, 1.f};
         std::normal_distribution<float> normal01{0.f, 1.f};
         RANDOM_t random{
@@ -221,14 +221,13 @@ void Scene::Render(std::ostream &out) {
             uniform01, 
             normal01
         };
-        for (unsigned int x = 0; x < cam.width; ++x) {
-            Color color = Sample(random, x, y);
-            color = AcesTonemap(color);
-            color = GammaCorrected(color);
+        unsigned int x = i % cam.width;
+        unsigned int y = i / cam.width;
+        Color color = Sample(random, x, y);
+        color = AcesTonemap(color);
+        color = GammaCorrected(color);
 
-            pixels[y][x] = color.rgb;
-        }
-        std::cout << "done column y = " << y << std::endl;
+        pixels[y][x] = color.rgb;
     }
 
     for (unsigned int y = 0; y < cam.height; ++y) {
