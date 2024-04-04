@@ -1,7 +1,5 @@
 #include "scene.h"
 
-Uniform01Distribution Scene::uniform;
-
 Camera::Camera(float fov_x) : fov_x(fov_x) {}
 
 void Scene::InitScene() {
@@ -88,7 +86,10 @@ static Point GetReflection(const Point& normal, const Point& dir) {
     return dir - 2.0 * normal * glm::dot(normal, dir);
 }
 
-Color Scene::RayTrace(const Ray& ray, size_t ost_raydepth) {
+Color Scene::RayTrace(RANDOM_t& random, const Ray& ray, size_t ost_raydepth) {
+    auto& uniform01 = random.uniform01;
+    auto& rnd = random.rnd;
+
     if (ost_raydepth == 0) {
         return {0., 0., 0.};
     }
@@ -111,7 +112,7 @@ Color Scene::RayTrace(const Ray& ray, size_t ost_raydepth) {
         // moving from surface a lil bit
         glm::vec3 p_outer = p + eps * normal;
         // генерируем случайное направление при помощи mix_distribution
-        glm::vec3 rand_dir = mix_distrib->sample(p_outer, normal);
+        glm::vec3 rand_dir = mix_distrib->sample(random, p_outer, normal);
 
         // если не в той полусфере, то не учитываем дополнительный свет
         if (glm::dot(rand_dir,normal) <= 0) {
@@ -119,7 +120,7 @@ Color Scene::RayTrace(const Ray& ray, size_t ost_raydepth) {
         }
 
         float pw = mix_distrib->pdf(p_outer, normal, rand_dir);
-        glm::vec3 L_in = RayTrace(Ray({p + eps * rand_dir, rand_dir}), ost_raydepth-1).rgb;
+        glm::vec3 L_in = RayTrace(random, Ray({p + eps * rand_dir, rand_dir}), ost_raydepth-1).rgb;
         glm::vec3 C = primitives[id].col.rgb;
         other_color = {(C / kPI) * L_in * glm::dot(rand_dir, normal) * (1 / pw)};
         break;
@@ -128,7 +129,7 @@ Color Scene::RayTrace(const Ray& ray, size_t ost_raydepth) {
         // L = E + C*L_in(R_n(w))
 
         glm::vec3 reflect_dir = GetReflection(normal, glm::normalize(ray.d));
-        Color reflected_color = RayTrace({p + eps * reflect_dir, reflect_dir}, ost_raydepth-1);     
+        Color reflected_color = RayTrace(random, {p + eps * reflect_dir, reflect_dir}, ost_raydepth-1);     
         other_color = {primitives[id].col.rgb * reflected_color.rgb};
         break;
     }
@@ -147,7 +148,7 @@ Color Scene::RayTrace(const Ray& ray, size_t ost_raydepth) {
 
         if (fabs(sin_theta2) > 1.) { // полное внутреннее отражение = вернуть отражённый
             glm::vec3 reflect_dir = GetReflection(normal, glm::normalize(ray.d));
-            Color reflected_color = RayTrace({p + eps * reflect_dir, reflect_dir}, ost_raydepth-1);
+            Color reflected_color = RayTrace(random, {p + eps * reflect_dir, reflect_dir}, ost_raydepth-1);
             other_color = reflected_color;
             break;
         }
@@ -156,9 +157,9 @@ Color Scene::RayTrace(const Ray& ray, size_t ost_raydepth) {
         float r = r0 + (1 - r0) * pow(1 - dot_normal_dir, 5.);
 
         // с шансом r вернем отражённый / 1-r соответственно преломлённый
-        if (uniform.sample() < r) {
+        if (uniform01.sample(rnd) < r) {
             glm::vec3 reflect_dir = GetReflection(normal, glm::normalize(ray.d));
-            Color reflected_color = RayTrace({p + eps * reflect_dir, reflect_dir}, ost_raydepth-1);
+            Color reflected_color = RayTrace(random, {p + eps * reflect_dir, reflect_dir}, ost_raydepth-1);
             other_color = reflected_color;
             break;
         }
@@ -166,7 +167,7 @@ Color Scene::RayTrace(const Ray& ray, size_t ost_raydepth) {
         float cos_theta2 = sqrt(1 - sin_theta2 * sin_theta2);
         glm::vec3 refracted_dir = eta1 / eta2 * (-1. * dir) + (eta1 / eta2 * dot_normal_dir - cos_theta2) * normal;
         Ray refracted = Ray(p + eps * refracted_dir, refracted_dir);
-        Color refracted_color = RayTrace(refracted, ost_raydepth - 1);
+        Color refracted_color = RayTrace(random, refracted, ost_raydepth - 1);
         if (!interior) {
             refracted_color = { primitives[id].col.rgb * refracted_color.rgb };
         }
@@ -192,14 +193,17 @@ Ray Camera::GetToRay(float x, float y) const {
     return {pos, nx*right + ny*up + 1.f*forward};
 }
 
-Color Scene::Sample(unsigned int x, unsigned int y) {
+Color Scene::Sample(RANDOM_t& random, unsigned int x, unsigned int y) {
+    auto& uniform01 = random.uniform01;
+    auto& rnd = random.rnd;
+
     Color summary(0.f, 0.f, 0.f);
 
     for(unsigned int i = 0; i < samples; ++i) {
         // сглаживаем
-        float fx = x + uniform.sample();
-        float fy = y + uniform.sample();
-        summary = {summary.rgb + RayTrace(cam.GetToRay(fx, fy), ray_depth).rgb};
+        float fx = x + uniform01.sample(rnd);
+        float fy = y + uniform01.sample(rnd);
+        summary = {summary.rgb + RayTrace(random, cam.GetToRay(fx, fy), ray_depth).rgb};
     }
     Color mean = {1.f / samples * summary.rgb };
     return mean;
@@ -210,10 +214,14 @@ void Scene::Render(std::ostream &out) {
     out << cam.width << " " << cam.height << "\n";
     out << 255 << "\n";
 
-    // #pragma omp parallel for schedule(dynamic,8)
+    std::minstd_rand rnd(123);
+    Uniform01Distribution uniform01{};
+    Normal01Distribution normal01{};
+    RANDOM_t random{rnd, uniform01, normal01};
+    //#pragma omp parallel for schedule(dynamic, std::thread::hardware_concurrency())
     for (unsigned int y = 0; y < cam.height; ++y) {
         for (unsigned int x = 0; x < cam.width; ++x) {
-            Color color = Sample(x, y);
+            Color color = Sample(random, x, y);
             color = AcesTonemap(color);
             color = GammaCorrected(color);
 

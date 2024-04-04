@@ -13,6 +13,7 @@
 #include <vector>
 #include <memory>
 #include <random>
+#include <thread>
 
 #define COMMAND_EMPTY              0
 #define COMMAND_DIMENSIONS         1
@@ -53,12 +54,11 @@ struct Camera {
 class Scene {
 private:
     static constexpr float eps = 1e-4;
-    static Uniform01Distribution uniform;
     BVH_t scene_bvh;
 
     ray_intersection_t RayIntersection(const Ray& ray) const;
-    Color Sample(unsigned int x, unsigned int y);
-    Color RayTrace(const Ray& ray, size_t ost_raydepth);
+    Color Sample(RANDOM_t& random, unsigned int x, unsigned int y);
+    Color RayTrace(RANDOM_t& random, const Ray& ray, size_t ost_raydepth);
 
     void InitDistribution();
     void InitBVH();

@@ -1,23 +1,16 @@
 #include "distributions.h"
 
-std::minstd_rand Distribution::rnd;
-std::uniform_real_distribution<float> Uniform01Distribution::uniform(0.f,1.f);
-std::normal_distribution<float> Normal01Distribution::normal(0.f,1.f);
-Normal01Distribution HalfSphereDistribution::normal01{};
-Normal01Distribution CosineDistribution::normal01{};
-Uniform01Distribution BoxDistribution::uniform{};
-Normal01Distribution EllipsoidDistribution::normal{};
-Uniform01Distribution MixDistribution::uniform{};
-
 ///////////////////
 //    UNIFORM    //
 ///////////////////
 
-float Uniform01Distribution::sample() {
+float Uniform01Distribution::sample(std::minstd_rand& rnd) {
     return uniform(rnd);
 }
 
-glm::vec3 Uniform01Distribution::sample(glm::vec3 x, glm::vec3 n) {
+glm::vec3 Uniform01Distribution::sample(RANDOM_t& random, glm::vec3 x, glm::vec3 n) {
+    auto& rnd = random.rnd;
+    
     (void) x;
     (void) n;
     return glm::normalize(glm::vec3{uniform(rnd), uniform(rnd), uniform(rnd)});
@@ -34,11 +27,13 @@ float Uniform01Distribution::pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
 //    NORMAL     //
 ///////////////////
 
-float Normal01Distribution::sample() {
+float Normal01Distribution::sample(std::minstd_rand& rnd) {
     return normal(rnd);
 }
 
-glm::vec3 Normal01Distribution::sample(glm::vec3 x, glm::vec3 n) {
+glm::vec3 Normal01Distribution::sample(RANDOM_t& random, glm::vec3 x, glm::vec3 n) {
+    auto& rnd = random.rnd;
+
     (void) x;
     (void) n;
     float flip1 = normal(rnd);
@@ -58,10 +53,11 @@ float Normal01Distribution::pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
 // HALF SPHERE   //
 ///////////////////
 
-glm::vec3 HalfSphereDistribution::sample(glm::vec3 x, glm::vec3 n) {
+glm::vec3 HalfSphereDistribution::sample(RANDOM_t& random, glm::vec3 x, glm::vec3 n) {
     (void) x;
+    auto& normal01 = random.normal01;
 
-    glm::vec3 dir = normal01.sample(x ,n);
+    glm::vec3 dir = normal01.sample(random, x ,n);
     if (glm::dot(dir, n) < 0) {
         dir = -1 * dir;
     }
@@ -82,10 +78,11 @@ float HalfSphereDistribution::pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
 //    COSINE     //
 ///////////////////
 
-glm::vec3 CosineDistribution::sample(glm::vec3 x, glm::vec3 n) {
+glm::vec3 CosineDistribution::sample(RANDOM_t& random, glm::vec3 x, glm::vec3 n) {
     (void) x;
+    auto& normal01 = random.normal01;
 
-    glm::vec3 dir = normal01.sample(x ,n);
+    glm::vec3 dir = normal01.sample(random, x ,n);
     dir = dir + n;
 
     if (glm::dot(dir, n) <= eps) {
@@ -144,8 +141,10 @@ static std::pair<std::optional<intersection_t>, std::optional<intersection_t>> G
 
 BoxDistribution::BoxDistribution(const Primitive* box): box_(box) {}
 
-glm::vec3 BoxDistribution::sample(glm::vec3 x, glm::vec3 n) {
+glm::vec3 BoxDistribution::sample(RANDOM_t& random, glm::vec3 x, glm::vec3 n) {
     (void) n;
+    auto& uniform01 = random.uniform01;
+    auto& rnd = random.rnd;
 
     auto s = box_->dop_data;
     
@@ -158,11 +157,11 @@ glm::vec3 BoxDistribution::sample(glm::vec3 x, glm::vec3 n) {
     float w_z = s_z * s_z;
 
 here_we_go_again:
-    float u = uniform.sample();
-    float side = (uniform.sample() <= 0.5 ? 1 : -1);
+    float u = uniform01.sample(rnd);
+    float side = (uniform01.sample(rnd) <= 0.5 ? 1 : -1);
     u *= w_x + w_y + w_z;
 
-    float c1 = uniform.sample(), c2 = uniform.sample(), c3 = uniform.sample();
+    float c1 = uniform01.sample(rnd), c2 = uniform01.sample(rnd), c3 = uniform01.sample(rnd);
     c1 = 2 * c1 - 1;
     c2 = 2 * c2 - 1;
     c3 = 2 * c3 - 1;
@@ -234,12 +233,13 @@ float BoxDistribution::pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
 
 EllipsoidDistribution::EllipsoidDistribution(const Primitive* ellipsoid): ellipsoid_(ellipsoid) {}
 
-glm::vec3 EllipsoidDistribution::sample(glm::vec3 x, glm::vec3 n) {
+glm::vec3 EllipsoidDistribution::sample(RANDOM_t& random, glm::vec3 x, glm::vec3 n) {
     (void) n;
+    auto& normal01 = random.normal01;
     
     glm::vec3 r = ellipsoid_->dop_data;
 here_we_go_again:
-    glm::vec3 k = normal.sample(x, n);
+    glm::vec3 k = normal01.sample(random, x, n);
 
     Point pnt = r * k;
 
@@ -292,18 +292,20 @@ float EllipsoidDistribution::pdf(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
 
 MixDistribution::MixDistribution(std::vector<std::unique_ptr<Distribution>>&& distribs): distribs_(std::move(distribs)) {}
 
-glm::vec3 MixDistribution::sample(glm::vec3 x, glm::vec3 n) {
+glm::vec3 MixDistribution::sample(RANDOM_t& random, glm::vec3 x, glm::vec3 n) {
     (void) n;
+    auto& uniform01 = random.uniform01;
+    auto& rnd = random.rnd;
 
-    float flip =uniform.sample();
+    float flip = uniform01.sample(rnd);
     if (distribs_.empty() || flip <= 0.5f) {
-        return cosine_distrib.sample(x, n);
+        return cosine_distrib.sample(random, x, n);
     }
 
-    float fid = uniform.sample(); // float [0,1]
+    float fid = uniform01.sample(rnd); // float [0,1]
     size_t id = std::floor(fid * distribs_.size()); // int [0,size-1]
 
-    glm::vec3 sample_ = distribs_[id]->sample(x, n);
+    glm::vec3 sample_ = distribs_[id]->sample(random, x, n);
     return sample_;
 }
 
