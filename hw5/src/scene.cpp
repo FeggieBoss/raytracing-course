@@ -1,5 +1,7 @@
 #include "scene.h"
 
+#include <omp.h>
+
 Camera::Camera(float fov_x) : fov_x(fov_x) {}
 
 void Scene::InitScene() {
@@ -214,19 +216,32 @@ void Scene::Render(std::ostream &out) {
     out << cam.width << " " << cam.height << "\n";
     out << 255 << "\n";
 
-    std::minstd_rand rnd(123);
-    Uniform01Distribution uniform01{};
-    Normal01Distribution normal01{};
-    RANDOM_t random{rnd, uniform01, normal01};
-    //#pragma omp parallel for schedule(dynamic, std::thread::hardware_concurrency())
+    std::vector<std::vector<glm::vec3>> pixels(cam.height, std::vector<glm::vec3>(cam.width));
+
+    omp_set_num_threads(std::thread::hardware_concurrency());
+    #pragma omp parallel for schedule(dynamic)
     for (unsigned int y = 0; y < cam.height; ++y) {
+        std::minstd_rand rnd(y);
+        Uniform01Distribution uniform01{};
+        Normal01Distribution normal01{};
+        RANDOM_t random{rnd, uniform01, normal01};
         for (unsigned int x = 0; x < cam.width; ++x) {
+
             Color color = Sample(random, x, y);
             color = AcesTonemap(color);
             color = GammaCorrected(color);
 
+            pixels[y][x] = color.rgb;
+        }
+    }
+
+    for (unsigned int y = 0; y < cam.height; ++y) {
+        for (unsigned int x = 0; x < cam.width; ++x) {
+            Color color = pixels[y][x];
+
             uint8_t *rgb = color.toUInts();
             out.write(reinterpret_cast<char*>(rgb), 3);
+            delete[] rgb;
         }
     }
 }
