@@ -27,12 +27,10 @@ float AABB_t::CalcS() {
 }
 
 void AABB_t::Extend(const Point& p) {
-    aabb_max.x = std::max(aabb_max.x, p.x);
-    aabb_max.y = std::max(aabb_max.y, p.y);
-    aabb_max.z = std::max(aabb_max.z, p.z);
-    aabb_min.x = std::min(aabb_min.x, p.x);
-    aabb_min.y = std::min(aabb_min.y, p.y);
-    aabb_min.z = std::min(aabb_min.z, p.z);
+    for (uint8_t axis = 0; axis < 3; ++axis) {
+        aabb_max[axis] = std::max(aabb_max[axis], p[axis]);
+        aabb_min[axis] = std::min(aabb_min[axis], p[axis]);
+    }
 }
 
 void AABB_t::Extend(const AABB_t& aabb) {
@@ -193,9 +191,9 @@ ray_intersection_t BVH_t::Intersect_(const std::vector<Primitive>& primitives, c
         return ray_intersection_t{intersection_t{}, -1};
     }
 
-    auto [t, _, __] = isec.value();
-    // already found closer intersection
-    if (closest_dist < t) {
+    auto [t, _, interior] = isec.value();
+    // already found closer intersection (we should take in account case where our Ray.o inside AABB)
+    if (closest_dist < t && !interior) {
         return ray_intersection_t{intersection_t{}, -1};
     }
 
