@@ -29,6 +29,8 @@ struct ray_intersection_t {
 };
 
 class Primitive {
+private:
+    static constexpr float eps = 1e-5;
 public:    
     static std::optional<intersection_t> IntersectPlane(const Ray &ray, const glm::vec3& n);
     static std::optional<intersection_t> IntersectBox(const Ray &ray, const glm::vec3& s);

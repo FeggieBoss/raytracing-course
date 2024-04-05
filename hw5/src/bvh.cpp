@@ -173,9 +173,8 @@ uint32_t BVH_t::InitTree(std::vector<Primitive>& primitives, uint32_t first, uin
         }
     }
 
-    auto& cur_node_ = nodes[cur_pos];
-    cur_node_.left_child = InitTree(primitives, first, cut);
-    cur_node_.right_child = InitTree(primitives, cut, last);
+    nodes[cur_pos].left_child = InitTree(primitives, first, cut);
+    nodes[cur_pos].right_child = InitTree(primitives, cut, last);
     return cur_pos;
 }
 

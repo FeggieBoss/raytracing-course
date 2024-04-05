@@ -138,7 +138,7 @@ Color Scene::RayTrace(RANDOM_t& random, const Ray& ray, size_t ost_raydepth) {
 
         glm::vec3 dir = -1. * glm::normalize(ray.d);
         float dot_normal_dir = glm::dot(normal, dir);
-        float sin_theta2 = eta1 / eta2 * sqrt(1 - dot_normal_dir * dot_normal_dir);
+        float sin_theta2 = eta1 / eta2 * sqrt(std::max(0.f, 1 - dot_normal_dir * dot_normal_dir));
 
         if (fabs(sin_theta2) > 1.) { // полное внутреннее отражение = вернуть отражённый
             glm::vec3 reflect_dir = GetReflection(normal, glm::normalize(ray.d));
@@ -183,7 +183,6 @@ Ray Camera::GetToRay(float x, float y) const {
 
     float nx =        (2 * x / width  - 1) * tan_fov_x;
     float ny = -1.f * (2 * y / height - 1) * tan_fov_y;
-
     return {pos, nx*right + ny*up + 1.f*forward};
 }
 
