@@ -210,6 +210,7 @@ void Scene::Render(std::ostream &out) {
     std::vector<std::vector<glm::vec3>> pixels(cam.height, std::vector<glm::vec3>(cam.width));
 
     omp_set_num_threads(std::thread::hardware_concurrency());
+    unsigned int percent10 = cam.height * cam.width / 10;
     #pragma omp parallel for schedule(dynamic)
     for (unsigned int i = 0; i < cam.height * cam.width; i++) {
         std::minstd_rand rnd(i);
@@ -227,6 +228,16 @@ void Scene::Render(std::ostream &out) {
         color = GammaCorrected(color);
 
         pixels[y][x] = color.rgb;
+
+        if (i && i % percent10 == 0) {
+            std::string loading_bar = "Loading: [ ";
+            unsigned int ct = i / percent10;
+            loading_bar += std::string(ct, '#');
+            loading_bar += std::string(11-ct, ' ');
+            loading_bar += std::to_string(ct * 10);
+            loading_bar += "% ]\n";
+            std::cout << loading_bar;
+        }
     }
 
     for (unsigned int y = 0; y < cam.height; ++y) {
