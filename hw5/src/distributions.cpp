@@ -376,8 +376,8 @@ float Distribution::PdfEllipsoid(glm::vec3 x, glm::vec3 n, glm::vec3 d) const {
 ///////////////////
 
 Distribution::Distribution(DISTRIB_TYPE mix_type, std::vector<Distribution>&& distribs) {
-    distrib_type_ = DISTRIB_TYPE::MIX;
     assert(mix_type == DISTRIB_TYPE::MIX);
+    distrib_type_ = DISTRIB_TYPE::MIX;
 
     data.emplace<static_cast<std::size_t>(DATA_T::DISTRIBS_)>(std::move(distribs));
 }

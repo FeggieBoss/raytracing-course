@@ -43,7 +43,7 @@ std::optional<intersection_t> Primitive::Intersect(const Ray &ray) const {
     if (isec.has_value()) {
         auto [t, normal, interior] = isec.value();
         normal = rotate(rotator, normal);
-
+        normal = glm::normalize(normal);
         assert(glm::length(normal) < 1 + eps);
         
         return intersection_t{t, normal, interior};
