@@ -5,3 +5,4 @@
 ![Rabbid](rabbid512.png "The Rabbid 512x512")
 ![Rabbid](rabbid256.png "The Rabbid with lights 256x256")
 ![Rabbid](rabbid_side.png "The Rabbid side view")
+![Rabbid](rabbid768.png "The Rabbid side view")
